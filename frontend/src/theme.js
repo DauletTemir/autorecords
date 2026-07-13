@@ -1,0 +1,15 @@
+export const C = {
+  pageBg: "oklch(0.98 0.012 75)",
+  featureBg: "oklch(0.93 0.02 70)",
+  accent: "oklch(0.55 0.14 40)",
+  accentDark: "oklch(0.42 0.1 42)",
+  headingText: "oklch(0.28 0.03 50)",
+  bodyText: "oklch(0.46 0.02 60)",
+  card: "#FFFFFF",
+  line: "oklch(0.88 0.02 70)",
+  danger: "#B3261E",
+  ok: "#1E7A3C",
+  chipOchre: "oklch(0.6 0.1 90)",
+  chipBlue: "oklch(0.5 0.08 200)",
+  chipGreen: "oklch(0.45 0.1 140)",
+};

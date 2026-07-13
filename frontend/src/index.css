@@ -1,0 +1,20 @@
+@import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,600;0,700;1,500&family=Nunito:wght@400;500;600;700;800&display=swap');
+@import "tailwindcss";
+
+.font-display {
+  font-family: 'Lora', serif;
+}
+.font-body {
+  font-family: 'Nunito', system-ui, sans-serif;
+}
+
+body {
+  margin: 0;
+}
+
+@media print {
+  .no-print { display: none !important; }
+  body { background: #fff !important; }
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
