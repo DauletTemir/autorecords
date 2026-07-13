@@ -10,3 +10,6 @@ coverage/
 .vercel/
 playwright-report/
 test-results/
+*.pem
+*.key
+credentials.json

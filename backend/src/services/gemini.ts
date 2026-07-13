@@ -1,7 +1,7 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI } from "@google/genai";
 import { env } from "../config/env.js";
 
-const genAI = new GoogleGenerativeAI(env.GEMINI_API_KEY);
+const ai = new GoogleGenAI({ apiKey: env.GEMINI_API_KEY });
 
 export interface ExtractedDocument {
   vin: string;
@@ -62,14 +62,15 @@ export async function analyzeDocumentImage(
   lang: "en" | "ru",
   knownVins: string[],
 ): Promise<ExtractedDocument> {
-  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+  const response = await ai.models.generateContent({
+    model: "gemini-2.5-flash",
+    contents: [
+      { inlineData: { data: base64, mimeType: mediaType } },
+      { text: buildPrompt(lang, knownVins) },
+    ],
+  });
 
-  const result = await model.generateContent([
-    { inlineData: { data: base64, mimeType: mediaType } },
-    { text: buildPrompt(lang, knownVins) },
-  ]);
-
-  const text = result.response.text();
+  const text = response.text;
   if (!text) throw new Error("Empty response from model");
   return extractJson(text);
 }
