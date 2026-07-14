@@ -13,3 +13,4 @@ test-results/
 *.pem
 *.key
 credentials.json
+.claude/

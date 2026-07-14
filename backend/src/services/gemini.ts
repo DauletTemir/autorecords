@@ -63,7 +63,7 @@ export async function analyzeDocumentImage(
   knownVins: string[],
 ): Promise<ExtractedDocument> {
   const response = await ai.models.generateContent({
-    model: "gemini-2.5-flash",
+    model: "gemini-3.5-flash",
     contents: [
       { inlineData: { data: base64, mimeType: mediaType } },
       { text: buildPrompt(lang, knownVins) },

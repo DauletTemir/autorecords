@@ -4,6 +4,7 @@
 create table organizations (
   id uuid primary key default gen_random_uuid(),
   name text not null,
+  created_by uuid references auth.users(id) on delete set null,
   created_at timestamptz default now()
 );
 
@@ -38,26 +39,38 @@ alter table org_members enable row level security;
 alter table vehicles enable row level security;
 alter table service_entries enable row level security;
 
--- organizations: a user can see/update a group only if they're a member
+-- security definer helper: bypasses RLS internally, so policies that need
+-- "which orgs am I a member of" don't recurse into org_members' own RLS.
+create or replace function my_org_ids()
+returns setof uuid
+language sql
+security definer
+stable
+set search_path = public
+as $$
+  select org_id from org_members where user_id = auth.uid()
+$$;
+
+-- organizations: visible if the caller is a member, or the row's own creator
+-- (the creator clause lets INSERT ... RETURNING succeed before the matching
+-- org_members row exists — Postgres RLS requires the new row to satisfy a
+-- SELECT policy for RETURNING to work, see CREATE POLICY docs on RETURNING).
 create policy "select own groups" on organizations
-  for select using (
-    id in (select org_id from org_members where user_id = auth.uid())
-  );
+  for select to authenticated
+  using (id in (select my_org_ids()) or created_by = auth.uid());
 
 create policy "update own groups" on organizations
-  for update using (
-    id in (select org_id from org_members where user_id = auth.uid())
-  );
+  for update to authenticated
+  using (id in (select my_org_ids()));
 
 -- organizations: any authenticated user can create a new group (signup flow)
 create policy "create groups" on organizations
-  for insert with check (auth.uid() is not null);
+  for insert to authenticated
+  with check (created_by = auth.uid());
 
 -- org_members: members can see who else is in their groups
 create policy "select own membership rows" on org_members
-  for select using (
-    org_id in (select org_id from org_members where user_id = auth.uid())
-  );
+  for select using (org_id in (select my_org_ids()));
 
 -- org_members: a user can insert themselves into a group they just created
 create policy "insert own membership" on org_members
@@ -65,24 +78,13 @@ create policy "insert own membership" on org_members
 
 -- vehicles: full access if the caller belongs to the vehicle's group
 create policy "manage vehicles in own groups" on vehicles
-  for all using (
-    org_id in (select org_id from org_members where user_id = auth.uid())
-  ) with check (
-    org_id in (select org_id from org_members where user_id = auth.uid())
-  );
+  for all using (org_id in (select my_org_ids()))
+  with check (org_id in (select my_org_ids()));
 
 -- service_entries: full access if the caller belongs to the parent vehicle's group
 create policy "manage entries in own groups" on service_entries
   for all using (
-    vehicle_id in (
-      select v.id from vehicles v
-      join org_members m on m.org_id = v.org_id
-      where m.user_id = auth.uid()
-    )
+    vehicle_id in (select id from vehicles where org_id in (select my_org_ids()))
   ) with check (
-    vehicle_id in (
-      select v.id from vehicles v
-      join org_members m on m.org_id = v.org_id
-      where m.user_id = auth.uid()
-    )
+    vehicle_id in (select id from vehicles where org_id in (select my_org_ids()))
   );

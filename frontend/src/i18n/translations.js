@@ -77,6 +77,8 @@ export const T = {
     forgotPassword: "Forgot password?",
     resetPassword: "Reset password",
     resetPasswordSent: "Check your email for a reset link.",
+    checkYourEmail: "Check your email",
+    confirmEmailSent: "We sent you a confirmation link. Click it, then log in.",
 
     // group settings
     groupSettings: "Garage settings",
@@ -164,6 +166,8 @@ export const T = {
     forgotPassword: "Забыли пароль?",
     resetPassword: "Восстановить пароль",
     resetPasswordSent: "Проверьте почту — мы отправили ссылку для восстановления.",
+    checkYourEmail: "Проверьте почту",
+    confirmEmailSent: "Мы отправили ссылку для подтверждения. Перейдите по ней, затем войдите.",
 
     // group settings
     groupSettings: "Настройки гаража",
