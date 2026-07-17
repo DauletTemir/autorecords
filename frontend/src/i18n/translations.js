@@ -79,6 +79,8 @@ export const T = {
     resetPasswordSent: "Check your email for a reset link.",
     checkYourEmail: "Check your email",
     confirmEmailSent: "We sent you a confirmation link. Click it, then log in.",
+    continueWithGoogle: "Continue with Google",
+    orDivider: "or",
 
     // group settings
     groupSettings: "Garage settings",
@@ -168,6 +170,8 @@ export const T = {
     resetPasswordSent: "Проверьте почту — мы отправили ссылку для восстановления.",
     checkYourEmail: "Проверьте почту",
     confirmEmailSent: "Мы отправили ссылку для подтверждения. Перейдите по ней, затем войдите.",
+    continueWithGoogle: "Войти через Google",
+    orDivider: "или",
 
     // group settings
     groupSettings: "Настройки гаража",

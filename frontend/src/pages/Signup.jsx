@@ -4,6 +4,7 @@ import { supabase } from "../lib/supabaseClient";
 import { C } from "../theme";
 import { T } from "../i18n/translations";
 import { Btn, Field, Input } from "../components/ui";
+import GoogleAuthButton from "../components/GoogleAuthButton";
 
 const t = (k) => T.ru[k] || k;
 
@@ -56,6 +57,14 @@ export default function Signup() {
         </Field>
         {error && <div className="text-sm mb-3" style={{ color: C.danger }}>{error}</div>}
         <Btn type="submit" disabled={busy} style={{ width: "100%" }}>{t("signup")}</Btn>
+
+        <div className="flex items-center gap-3 my-4">
+          <div style={{ flex: 1, height: 1, background: C.line }} />
+          <span className="text-xs" style={{ color: C.bodyText }}>{t("orDivider")}</span>
+          <div style={{ flex: 1, height: 1, background: C.line }} />
+        </div>
+        <GoogleAuthButton />
+
         <div className="mt-4 text-sm">
           {t("alreadyHaveAccount")} <Link to="/login" style={{ color: C.accent }}>{t("login")}</Link>
         </div>
