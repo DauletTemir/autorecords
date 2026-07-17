@@ -27,17 +27,22 @@ export async function analyzePhoto(file, lang, knownVins) {
   return data;
 }
 
-// Fire-and-forget: backup failures must never block the user's save.
+// Fire-and-forget: backup failures must never block the user's save,
+// but they're worth surfacing in the console for diagnosis.
 export async function triggerBackup(orgId) {
   try {
     const headers = await authHeader();
-    await fetch(`${API_URL}/api/backup`, {
+    const res = await fetch(`${API_URL}/api/backup`, {
       method: "POST",
       headers: { ...headers, "Content-Type": "application/json" },
       body: JSON.stringify({ orgId }),
     });
-  } catch {
-    // Backup is best-effort; Supabase remains the source of truth.
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      console.warn("Backup failed:", data.error || res.status, data.detail || "");
+    }
+  } catch (err) {
+    console.warn("Backup request failed:", err.message);
   }
 }
 

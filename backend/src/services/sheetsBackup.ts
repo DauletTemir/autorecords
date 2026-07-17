@@ -23,6 +23,23 @@ function getSheetsClient() {
   return google.sheets({ version: "v4", auth });
 }
 
+async function ensureSheetsExist(
+  sheets: ReturnType<typeof getSheetsClient>,
+  spreadsheetId: string,
+): Promise<void> {
+  const meta = await sheets.spreadsheets.get({ spreadsheetId });
+  const existingTitles = new Set((meta.data.sheets ?? []).map((s) => s.properties?.title));
+  const missing = ["Vehicles", "ServiceEntries"].filter((title) => !existingTitles.has(title));
+  if (missing.length === 0) return;
+
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId,
+    requestBody: {
+      requests: missing.map((title) => ({ addSheet: { properties: { title } } })),
+    },
+  });
+}
+
 /**
  * One-way backup: only ever mirrors BACKUP_ORG_ID's data into Sheets.
  * Never writes data belonging to other users/groups.
@@ -33,6 +50,7 @@ export async function backupOrgToSheets(orgId: string): Promise<{ skipped: boole
 
   const sheets = getSheetsClient();
   const spreadsheetId = env.BACKUP_SPREADSHEET_ID!;
+  await ensureSheetsExist(sheets, spreadsheetId);
 
   const { data: vehicles, error: vehiclesError } = await supabaseAdmin
     .from("vehicles")
