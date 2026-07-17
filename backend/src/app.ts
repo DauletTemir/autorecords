@@ -4,6 +4,7 @@ import helmet from "helmet";
 import { env } from "./config/env.js";
 import { analyzePhotoRouter } from "./routes/analyzePhoto.js";
 import { groupInviteRouter } from "./routes/groupInvite.js";
+import { backupRouter } from "./routes/backup.js";
 
 export const app = express();
 
@@ -15,6 +16,7 @@ app.get("/health", (_req, res) => res.json({ ok: true }));
 
 app.use("/api", analyzePhotoRouter);
 app.use("/api", groupInviteRouter);
+app.use("/api", backupRouter);
 
 app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   if (err instanceof Error && err.message.includes("File too large")) {

@@ -27,6 +27,20 @@ export async function analyzePhoto(file, lang, knownVins) {
   return data;
 }
 
+// Fire-and-forget: backup failures must never block the user's save.
+export async function triggerBackup(orgId) {
+  try {
+    const headers = await authHeader();
+    await fetch(`${API_URL}/api/backup`, {
+      method: "POST",
+      headers: { ...headers, "Content-Type": "application/json" },
+      body: JSON.stringify({ orgId }),
+    });
+  } catch {
+    // Backup is best-effort; Supabase remains the source of truth.
+  }
+}
+
 export async function inviteMember(groupId, email) {
   const headers = await authHeader();
   const res = await fetch(`${API_URL}/api/groups/${groupId}/invite`, {

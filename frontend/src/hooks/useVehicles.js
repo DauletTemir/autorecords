@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
+import { triggerBackup } from "../lib/api";
 
 export function useVehicles(orgId) {
   const [vehicles, setVehicles] = useState(null);
@@ -39,6 +40,7 @@ export function useVehicles(orgId) {
       .single();
     if (error) throw error;
     await reload();
+    triggerBackup(orgId);
     return data;
   }, [orgId, reload]);
 
@@ -46,13 +48,15 @@ export function useVehicles(orgId) {
     const { error } = await supabase.from("service_entries").insert({ vehicle_id: vehicleId, ...entry });
     if (error) throw error;
     await reload();
-  }, [reload]);
+    triggerBackup(orgId);
+  }, [orgId, reload]);
 
   const deleteVehicle = useCallback(async (vehicleId) => {
     const { error } = await supabase.from("vehicles").delete().eq("id", vehicleId);
     if (error) throw error;
     await reload();
-  }, [reload]);
+    triggerBackup(orgId);
+  }, [orgId, reload]);
 
   return { vehicles, loading, addVehicle, addEntry, deleteVehicle, reload };
 }
