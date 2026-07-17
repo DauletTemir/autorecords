@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { C } from "../theme";
 import { T } from "../i18n/translations";
@@ -16,10 +16,25 @@ export default function GroupSettings() {
   const [name, setName] = useState(group?.name ?? "");
   const [inviteEmail, setInviteEmail] = useState("");
   const [status, setStatus] = useState(null);
+  const nameInitialized = useRef(false);
+
+  useEffect(() => {
+    // Only seed the field from the loaded group once. Re-syncing on every
+    // group change would clobber in-progress edits whenever useCurrentGroup
+    // re-fetches (e.g. after a Supabase auth token refresh).
+    if (group?.name && !nameInitialized.current) {
+      setName(group.name);
+      nameInitialized.current = true;
+    }
+  }, [group?.name]);
 
   const saveName = async () => {
     if (!group) return;
-    await supabase.from("organizations").update({ name }).eq("id", group.id);
+    const { error } = await supabase.from("organizations").update({ name }).eq("id", group.id);
+    if (error) {
+      setStatus({ msg: error.message, kind: "warn" });
+      return;
+    }
     setStatus({ msg: t("save"), kind: "ok" });
   };
 
@@ -46,8 +61,8 @@ export default function GroupSettings() {
       <section className="p-5 mb-5" style={{ background: C.card, borderRadius: 12 }}>
         <Field label={t("groupName")}>
           <div className="flex gap-2">
-            <Input value={name} onChange={(e) => setName(e.target.value)} />
-            <Btn onClick={saveName}>{t("save")}</Btn>
+            <Input name="groupName" value={name} onChange={(e) => setName(e.target.value)} disabled={!group} />
+            <Btn onClick={saveName} disabled={!group}>{t("save")}</Btn>
           </div>
         </Field>
       </section>
@@ -63,7 +78,7 @@ export default function GroupSettings() {
         <form onSubmit={sendInvite} className="mt-4">
           <Field label={t("inviteByEmail")}>
             <div className="flex gap-2">
-              <Input type="email" required value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} />
+              <Input type="email" name="inviteEmail" required value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} />
               <Btn type="submit">{t("invite")}</Btn>
             </div>
           </Field>

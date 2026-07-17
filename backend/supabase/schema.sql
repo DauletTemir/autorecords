@@ -51,6 +51,10 @@ as $$
   select org_id from org_members where user_id = auth.uid()
 $$;
 
+-- Only the authenticated role calls this (implicitly, via RLS policies).
+-- Anonymous callers have no legitimate reason to invoke it directly.
+revoke execute on function my_org_ids() from public, anon;
+
 -- organizations: visible if the caller is a member, or the row's own creator
 -- (the creator clause lets INSERT ... RETURNING succeed before the matching
 -- org_members row exists — Postgres RLS requires the new row to satisfy a
@@ -88,3 +92,36 @@ create policy "manage entries in own groups" on service_entries
   ) with check (
     vehicle_id in (select id from vehicles where org_id in (select my_org_ids()))
   );
+
+-- Auto-create a default group for every new user, atomically, at the
+-- database level. This replaces client-side "check then create" logic,
+-- which race-conditions into duplicate groups when two pages mount at once.
+create or replace function handle_new_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  new_org_id uuid;
+begin
+  insert into organizations (name, created_by)
+  values ('Гараж', new.id)
+  returning id into new_org_id;
+
+  insert into org_members (user_id, org_id, role)
+  values (new.id, new_org_id, 'owner');
+
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute function handle_new_user();
+
+-- Must only ever run via the trigger above — direct RPC calls would let
+-- anyone spam-create groups (public.rpc/handle_new_user is otherwise
+-- reachable by any role, authenticated or not).
+revoke execute on function handle_new_user() from public, anon, authenticated;

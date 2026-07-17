@@ -6,6 +6,7 @@ import { useCurrentGroup } from "../hooks/useCurrentGroup";
 import { useVehicles } from "../hooks/useVehicles";
 import { Btn, Input, Label, VinPlate } from "../components/ui";
 import AddEntryModal from "../components/AddEntryModal";
+import { filterHistory, sumCost } from "../lib/historyFilters";
 
 const t = (k) => T.ru[k] || k;
 
@@ -31,20 +32,8 @@ export default function VehicleDetail() {
 
   const types = [...new Set(vehicle.history.map((h) => h.service_type).filter(Boolean))];
 
-  const filtered = vehicle.history.filter((h) => {
-    if (f.dateFrom && h.date && h.date < f.dateFrom) return false;
-    if (f.dateTo && h.date && h.date > f.dateTo) return false;
-    if (f.type && h.service_type !== f.type) return false;
-    const cost = parseFloat(String(h.cost).replace(/[^\d.]/g, ""));
-    if (f.costMin && !(cost >= parseFloat(f.costMin))) return false;
-    if (f.costMax && !(cost <= parseFloat(f.costMax))) return false;
-    return true;
-  });
-
-  const totalCost = filtered.reduce((s, h) => {
-    const c = parseFloat(String(h.cost).replace(/[^\d.]/g, ""));
-    return s + (isNaN(c) ? 0 : c);
-  }, 0);
+  const filtered = filterHistory(vehicle.history, f);
+  const totalCost = sumCost(filtered);
 
   const info = [["vin", vehicle.vin], ["brand", vehicle.brand], ["model", vehicle.model], ["year", vehicle.year], ["plate", vehicle.plate]];
 
@@ -148,7 +137,14 @@ export default function VehicleDetail() {
       {showForm && (
         <AddEntryModal
           onClose={() => setShowForm(false)}
-          onSave={async (entry) => { await addEntry(vehicle.id, entry); setShowForm(false); }}
+          onSave={async (entry) => {
+            try {
+              await addEntry(vehicle.id, entry);
+              setShowForm(false);
+            } catch (err) {
+              console.error("Failed to save service entry:", err.message);
+            }
+          }}
         />
       )}
 

@@ -45,7 +45,11 @@ export function useVehicles(orgId) {
   }, [orgId, reload]);
 
   const addEntry = useCallback(async (vehicleId, entry) => {
-    const { error } = await supabase.from("service_entries").insert({ vehicle_id: vehicleId, ...entry });
+    const { error } = await supabase.from("service_entries").insert({
+      vehicle_id: vehicleId,
+      ...entry,
+      cost: entry.cost === "" ? null : entry.cost,
+    });
     if (error) throw error;
     await reload();
     triggerBackup(orgId);
