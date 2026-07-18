@@ -57,9 +57,23 @@ test.describe("Login/signup flow", () => {
 
 test.describe("Signup flow", () => {
   test("new signup shows a check-your-email screen, not an immediate session", async ({ page }) => {
-    const email = uniqueEmail("signup");
+    // Mocked at the network level: Supabase's own email-sending rate limit
+    // (not part of our app's logic) would otherwise make this test flaky
+    // whenever the suite runs signups back-to-back in a short window.
+    await page.route("**/auth/v1/signup*", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          id: "00000000-0000-4000-8000-000000000000",
+          email: "mocked-signup@gmail.com",
+          confirmation_sent_at: new Date().toISOString(),
+        }),
+      });
+    });
+
     await page.goto("/signup");
-    await page.fill('input[type="email"]', email);
+    await page.fill('input[type="email"]', "mocked-signup@gmail.com");
     await page.fill('input[type="password"]', "testpass123456");
     await page.click('button[type="submit"]');
 
