@@ -1,16 +1,58 @@
-# React + Vite
+# AutoRecords — frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Vehicle service history tracker for a garage or group of people sharing
+vehicles (family, small repair shop, etc.). Users sign up, join or create a
+group, add vehicles, and log service history — either by hand or by
+uploading a photo of an invoice/work order for AI extraction.
 
-Currently, two official plugins are available:
+## Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- React 19 + Vite 8
+- Tailwind CSS 4
+- React Router 7
+- Supabase (auth, Postgres via `@supabase/supabase-js`, row-level security)
+- Vitest for unit tests, Playwright for E2E
 
-## React Compiler
+The frontend talks to Supabase directly for data (protected by RLS) and to
+the backend only for operations that need a server-side secret: AI photo
+analysis (Gemini) and the Google Sheets backup.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Local development
 
-## Expanding the Oxlint configuration
+```bash
+cp .env.example .env   # fill in your Supabase project URL/anon key and the backend URL
+npm install
+npm run dev
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+The backend (`../backend`) needs to be running separately — see its own
+`.env.example` and `npm run dev`.
+
+## Scripts
+
+- `npm run dev` — start the Vite dev server
+- `npm run build` — production build to `dist/`
+- `npm run test` — Vitest unit tests
+- `npm run test:e2e` — Playwright E2E tests (needs `.env.e2e`, see `.env.e2e.example`)
+- `npm run lint` — Oxlint
+
+## Deployment
+
+Deployed on **Cloudflare Pages**, auto-deploying from GitHub on every push
+to `main`. Cloudflare Pages project settings:
+
+| Setting | Value |
+|---|---|
+| Framework preset | Vite |
+| Root directory | `frontend` |
+| Build command | `npm run build` |
+| Build output directory | `dist` |
+
+Required environment variables (set in the Cloudflare Pages dashboard, not
+in code):
+
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
+- `VITE_API_URL` — the deployed backend URL (e.g. `https://api.prodexperts.com`)
+
+See the root [README](../README.md) for how the backend is deployed.

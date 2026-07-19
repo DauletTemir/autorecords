@@ -1,0 +1,4 @@
+---
+deployment:
+  tasks:
+    - /bin/touch /home/prodasqp/repositories/autorecords/backend/tmp/restart.txt

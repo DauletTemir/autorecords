@@ -1,0 +1,62 @@
+# Deploys backend/ to a cPanel/Passenger Node.js app over SSH whenever
+# backend/ or the deployment task list (.cpanel.yml) changes on main.
+#
+# Required GitHub Actions secrets (Settings → Secrets and variables →
+# Actions → New repository secret):
+#
+#   CPANEL_HOST      — the SSH hostname for the cPanel server
+#                       (e.g. server123.web-hosting.com or your domain)
+#   CPANEL_USERNAME  — the cPanel SSH username
+#   CPANEL_SSH_KEY   — the private key (PEM) for SSH key-based auth to
+#                       that account; the matching public key must already
+#                       be added to the cPanel account's SSH Access keys
+#   CPANEL_SSH_PORT  — the SSH port cPanel is listening on (often 21098
+#                       on shared hosting, not the default 22 — check
+#                       cPanel → SSH Access for the exact port)
+#
+# None of these are hardcoded here — they only ever exist as encrypted
+# repo secrets, injected at run time.
+
+name: Deploy backend
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - ".cpanel.yml"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      # Sanity build before touching the server — if this fails, we never
+      # attempt the SSH deploy step below.
+      - name: Install and build (sanity check)
+        working-directory: backend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.CPANEL_HOST }}
+          username: ${{ secrets.CPANEL_USERNAME }}
+          key: ${{ secrets.CPANEL_SSH_KEY }}
+          port: ${{ secrets.CPANEL_SSH_PORT }}
+          script: |
+            cd /home/prodasqp/repositories/autorecords
+            git pull origin main
+            cd backend
+            npm ci
+            npm run build
+            touch tmp/restart.txt
