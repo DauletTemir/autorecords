@@ -23,8 +23,15 @@ frontend's local setup.
 - **Frontend**: Cloudflare Pages, auto-deploying from GitHub on every push
   to `main`. Configuration details in [`frontend/README.md`](frontend/README.md#deployment).
 - **Backend**: runs as a Node.js app under cPanel/Passenger on Namecheap
-  shared hosting (Node 24.16.0). Deployed via GitHub Actions over SSH —
-  see `.github/workflows/deploy-backend.yml` and `.cpanel.yml`.
+  shared hosting (Node 24.16.0). Deployment is **manual** — the shared
+  hosting firewall blocks SSH connections from GitHub Actions' dynamic
+  runner IPs, so there's no automated deploy step. After pushing to `main`:
+  1. In cPanel → **Git Version Control**, open the `autorecords` repo and
+     click **Update from Remote** to pull the latest `main`.
+  2. Over SSH/Terminal, in the `backend/` directory: `npm ci && npm run build`.
+  3. Restart Passenger — either `touch tmp/restart.txt` directly, or click
+     **Deploy HEAD Commit** in Git Version Control, which runs the task
+     list in `.cpanel.yml` (currently just the same `touch`).
 
 CI runs on every push/PR to `main` via `.github/workflows/ci.yml`
 (build + test for both `frontend/` and `backend/`).
