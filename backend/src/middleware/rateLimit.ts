@@ -22,3 +22,12 @@ export const inviteLimiter = rateLimit({
   keyGenerator: keyByUserOrIp,
   message: { error: "Too many invitations sent, please try again later" },
 });
+
+export const backupLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: keyByUserOrIp,
+  message: { error: "Too many backup requests, please try again later" },
+});

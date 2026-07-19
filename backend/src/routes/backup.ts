@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { requireAuth } from "../middleware/auth.js";
+import { backupLimiter } from "../middleware/rateLimit.js";
 import { supabaseAdmin } from "../services/supabaseAdmin.js";
 import { backupOrgToSheets } from "../services/sheetsBackup.js";
 
@@ -8,7 +9,7 @@ const bodySchema = z.object({ orgId: z.string().uuid() });
 
 export const backupRouter = Router();
 
-backupRouter.post("/backup", requireAuth, async (req, res) => {
+backupRouter.post("/backup", requireAuth, backupLimiter, async (req, res) => {
   const parsed = bodySchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ error: "orgId is required" });
