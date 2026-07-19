@@ -54,8 +54,9 @@ jobs:
           key: ${{ secrets.CPANEL_SSH_KEY }}
           port: ${{ secrets.CPANEL_SSH_PORT }}
           script: |
-            cd ~/autorecords/backend
+            cd /home/prodasqp/repositories/autorecords
             git pull origin main
+            cd backend
             npm ci
             npm run build
             touch tmp/restart.txt

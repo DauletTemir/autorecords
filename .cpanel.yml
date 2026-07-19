@@ -1,6 +1,4 @@
 ---
 deployment:
   tasks:
-    - export DEPLOYPATH=/home/USERNAME/autorecords/backend/
-    - /bin/cp -R backend/* $DEPLOYPATH
-    - touch $DEPLOYPATH/tmp/restart.txt
+    - /bin/touch /home/prodasqp/repositories/autorecords/backend/tmp/restart.txt
