@@ -12,7 +12,7 @@ const t = (k) => T.ru[k] || k;
 
 export default function VehicleList() {
   const { group, loading: groupLoading } = useCurrentGroup();
-  const { vehicles, loading, addVehicle, reload } = useVehicles(group?.id);
+  const { vehicles, loading, addVehicle, addEntry } = useVehicles(group?.id);
   const [query, setQuery] = useState("");
   const [showAdd, setShowAdd] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -36,11 +36,25 @@ export default function VehicleList() {
         return;
       }
       const existing = vehicles.find((v) => v.vin === vin);
-      if (!existing) {
-        await addVehicle({ vin, brand: extracted.brand, model: extracted.model, year: extracted.year, plate: extracted.plate });
-      }
-      notify(`${t("aiAdded")} ${extracted.brand} ${extracted.model}`);
-      await reload();
+      const isNew = !existing;
+      const vehicle = existing ?? await addVehicle({ vin, brand: extracted.brand, model: extracted.model, year: extracted.year, plate: extracted.plate });
+
+      await addEntry(vehicle.id, {
+        date: extracted.date || null,
+        service_type: extracted.service_type || "",
+        description: extracted.description || "",
+        mileage: extracted.mileage || "",
+        cost: extracted.cost || "",
+        comment: extracted.comment || "",
+      });
+
+      const savedWhat = [extracted.service_type, extracted.date].filter(Boolean).join(" — ");
+      const vehicleLabel = `${extracted.brand} ${extracted.model}`;
+      notify(
+        isNew
+          ? `${t("aiAdded")} ${vehicleLabel} (${t("newVehicle")})${savedWhat ? `: ${savedWhat}` : ""}`
+          : `${t("aiAdded")} ${vehicleLabel}${savedWhat ? `: ${savedWhat}` : ""}`,
+      );
     } catch (e) {
       notify(`${t("aiError")}\n${e.message}`, "warn");
     } finally {
