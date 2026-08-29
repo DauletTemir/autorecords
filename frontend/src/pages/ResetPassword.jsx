@@ -2,12 +2,11 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
 import { C } from "../theme";
-import { T } from "../i18n/translations";
+import { useLang } from "../i18n/LangContext";
 import { Btn, Field, Input } from "../components/ui";
 
-const t = (k) => T.ru[k] || k;
-
 export default function ResetPassword() {
+  const { t } = useLang();
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const [error, setError] = useState(null);

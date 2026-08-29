@@ -3,7 +3,9 @@ import multer from "multer";
 import { requireAuth } from "../middleware/auth.js";
 import { analyzePhotoLimiter } from "../middleware/rateLimit.js";
 import { detectImageMime, normalizeImage, MAX_UPLOAD_BYTES } from "../services/imageProcessing.js";
-import { analyzeDocumentImage } from "../services/gemini.js";
+import { analyzeDocumentImage, type SupportedLang } from "../services/gemini.js";
+
+const SUPPORTED_LANGS: SupportedLang[] = ["en", "ru", "kk"];
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -27,7 +29,7 @@ analyzePhotoRouter.post(
       return res.status(400).json({ error: "Unsupported or unrecognized image format" });
     }
 
-    const lang = req.body.lang === "en" ? "en" : "ru";
+    const lang: SupportedLang = SUPPORTED_LANGS.includes(req.body.lang) ? req.body.lang : "ru";
     let knownVins: string[] = [];
     try {
       knownVins = JSON.parse(req.body.knownVins ?? "[]");

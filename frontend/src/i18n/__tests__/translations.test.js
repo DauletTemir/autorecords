@@ -1,15 +1,23 @@
 import { describe, expect, it } from "vitest";
-import { T } from "../translations";
+import { T, LANGUAGES, LANGUAGE_LABELS } from "../translations";
 
 describe("translations", () => {
-  it("has both en and ru locales", () => {
-    expect(Object.keys(T)).toEqual(expect.arrayContaining(["en", "ru"]));
+  it("has en, kk and ru locales, in that display order", () => {
+    expect(Object.keys(T)).toEqual(expect.arrayContaining(["en", "kk", "ru"]));
+    expect(LANGUAGES).toEqual(["en", "kk", "ru"]);
   });
 
-  it("has identical key sets across locales, so no UI text silently falls back to a raw key", () => {
+  it("has a label for every supported language", () => {
+    for (const lang of LANGUAGES) {
+      expect(LANGUAGE_LABELS[lang]).toBeTruthy();
+    }
+  });
+
+  it("has identical key sets across all locales, so no UI text silently falls back to a raw key", () => {
     const enKeys = Object.keys(T.en).sort();
-    const ruKeys = Object.keys(T.ru).sort();
-    expect(ruKeys).toEqual(enKeys);
+    for (const lang of LANGUAGES) {
+      expect(Object.keys(T[lang]).sort(), `T.${lang} key set`).toEqual(enKeys);
+    }
   });
 
   it("has no empty translation strings", () => {

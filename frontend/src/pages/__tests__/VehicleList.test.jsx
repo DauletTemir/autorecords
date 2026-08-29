@@ -3,6 +3,7 @@ import { render, screen, waitFor, cleanup } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import "@testing-library/jest-dom/vitest";
+import { LangProvider } from "../../i18n/LangContext";
 
 afterEach(cleanup);
 
@@ -26,9 +27,11 @@ const GROUP = { id: "group-1", name: "Гараж" };
 
 function renderPage() {
   return render(
-    <MemoryRouter>
-      <VehicleList />
-    </MemoryRouter>,
+    <LangProvider>
+      <MemoryRouter>
+        <VehicleList />
+      </MemoryRouter>
+    </LangProvider>,
   );
 }
 
@@ -92,6 +95,10 @@ describe("VehicleList — photo upload writes a service entry", () => {
     });
 
     expect(await screen.findByText(/Oil change/)).toBeInTheDocument();
+
+    // Regression: handlePhoto used to hardcode "ru" instead of the app's
+    // active language.
+    expect(analyzePhoto).toHaveBeenCalledWith(expect.anything(), "ru", ["1HGCM82633A123456"]);
   });
 
   it("creates the vehicle first, then inserts the entry against the new vehicle's id", async () => {

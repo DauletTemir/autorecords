@@ -22,7 +22,15 @@ const EMPTY_FIELDS: Array<keyof ExtractedDocument> = [
   "service_type", "description", "mileage", "cost", "comment",
 ];
 
-function buildPrompt(lang: "en" | "ru", knownVins: string[]): string {
+export type SupportedLang = "en" | "ru" | "kk";
+
+const PROMPT_LANGUAGE_NAME: Record<SupportedLang, string> = {
+  en: "English",
+  ru: "Russian",
+  kk: "Kazakh",
+};
+
+function buildPrompt(lang: SupportedLang, knownVins: string[]): string {
   return `You are an OCR/extraction system for an automotive service company. Analyze this photo or screenshot of a vehicle service document (invoice, work order, receipt) and extract structured data.
 
 Known fleet VINs (if the document clearly refers to one of these vehicles by brand/model/plate but the VIN itself is not visible, use the matching VIN): ${knownVins.join(", ")}
@@ -41,7 +49,7 @@ Respond ONLY with a raw JSON object, no markdown fences, no explanations:
   "cost": "total amount as number string or empty",
   "comment": "anything else useful, incl. service center name"
 }
-Write "service_type", "description" and "comment" in ${lang === "ru" ? "Russian" : "English"}. If a field is unreadable or absent, use an empty string.`;
+Write "service_type", "description" and "comment" in ${PROMPT_LANGUAGE_NAME[lang]}. If a field is unreadable or absent, use an empty string.`;
 }
 
 export function extractJson(text: string): ExtractedDocument {
@@ -59,7 +67,7 @@ export function extractJson(text: string): ExtractedDocument {
 export async function analyzeDocumentImage(
   base64: string,
   mediaType: string,
-  lang: "en" | "ru",
+  lang: SupportedLang,
   knownVins: string[],
 ): Promise<ExtractedDocument> {
   const response = await ai.models.generateContent({

@@ -1,8 +1,7 @@
 import { Link } from "react-router-dom";
 import { C } from "../theme";
-import { T } from "../i18n/translations";
-
-const t = (k) => T.ru[k] || k;
+import { useLang } from "../i18n/LangContext";
+import LanguageSwitcher from "../components/LanguageSwitcher";
 
 const FEATURES = [
   { key: "featureAi", chip: C.accent },
@@ -12,6 +11,7 @@ const FEATURES = [
 ];
 
 export default function Landing() {
+  const { t } = useLang();
   return (
     <div className="font-body min-h-screen" style={{ background: C.pageBg, color: C.bodyText }}>
       <nav className="flex items-center justify-between px-6 sm:px-10 py-5">
@@ -23,16 +23,19 @@ export default function Landing() {
           <a href="#pricing">{t("navPricing")}</a>
           <Link to="/login">{t("navLogin")}</Link>
         </div>
-        <Link
-          to="/signup"
-          className="font-display uppercase font-semibold text-sm"
-          style={{
-            background: C.accent, color: "#fff", padding: "9px 18px",
-            borderRadius: 999, letterSpacing: "0.06em",
-          }}
-        >
-          {t("ctaStart")}
-        </Link>
+        <div className="flex items-center gap-3">
+          <LanguageSwitcher />
+          <Link
+            to="/signup"
+            className="font-display uppercase font-semibold text-sm"
+            style={{
+              background: C.accent, color: "#fff", padding: "9px 18px",
+              borderRadius: 999, letterSpacing: "0.06em",
+            }}
+          >
+            {t("ctaStart")}
+          </Link>
+        </div>
       </nav>
 
       <section className="grid md:grid-cols-2 gap-10 items-center px-6 sm:px-10 py-16 max-w-6xl mx-auto">

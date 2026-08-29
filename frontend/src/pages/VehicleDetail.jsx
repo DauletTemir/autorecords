@@ -1,16 +1,17 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { C } from "../theme";
-import { T } from "../i18n/translations";
+import { useLang } from "../i18n/LangContext";
 import { useCurrentGroup } from "../hooks/useCurrentGroup";
 import { useVehicles } from "../hooks/useVehicles";
 import { Btn, Input, Label, VinPlate } from "../components/ui";
 import AddEntryModal from "../components/AddEntryModal";
 import { filterHistory, sumCost } from "../lib/historyFilters";
 
-const t = (k) => T.ru[k] || k;
+const LOCALE_BY_LANG = { en: "en-US", ru: "ru-RU", kk: "kk-KZ" };
 
 export default function VehicleDetail() {
+  const { t, lang } = useLang();
   const { vin } = useParams();
   const navigate = useNavigate();
   const { group } = useCurrentGroup();
@@ -96,7 +97,7 @@ export default function VehicleDetail() {
         <div className="flex items-baseline justify-between mb-2">
           <Label>{t("history")} — {filtered.length} {t("entriesTotal")}</Label>
           {totalCost > 0 && (
-            <span className="font-mono text-sm">{t("totalCost")}: {totalCost.toLocaleString("ru-RU", { maximumFractionDigits: 2 })}</span>
+            <span className="font-mono text-sm">{t("totalCost")}: {totalCost.toLocaleString(LOCALE_BY_LANG[lang] ?? "en-US", { maximumFractionDigits: 2 })}</span>
           )}
         </div>
         {filtered.length === 0 ? (

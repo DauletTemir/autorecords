@@ -1,10 +1,9 @@
 import { supabase } from "../lib/supabaseClient";
 import { C } from "../theme";
-import { T } from "../i18n/translations";
-
-const t = (k) => T.ru[k] || k;
+import { useLang } from "../i18n/LangContext";
 
 export default function GoogleAuthButton() {
+  const { t } = useLang();
   const handleClick = async () => {
     await supabase.auth.signInWithOAuth({
       provider: "google",

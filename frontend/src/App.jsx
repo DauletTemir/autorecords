@@ -1,4 +1,5 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { LangProvider } from "./i18n/LangContext";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
@@ -10,21 +11,23 @@ import AuthGate from "./components/AuthGate";
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Landing />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<Signup />} />
-        <Route path="/reset-password" element={<ResetPassword />} />
+    <LangProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Landing />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
 
-        <Route element={<AuthGate />}>
-          <Route path="/app" element={<VehicleList />} />
-          <Route path="/app/vehicles/:vin" element={<VehicleDetail />} />
-          <Route path="/app/settings" element={<GroupSettings />} />
-        </Route>
+          <Route element={<AuthGate />}>
+            <Route path="/app" element={<VehicleList />} />
+            <Route path="/app/vehicles/:vin" element={<VehicleDetail />} />
+            <Route path="/app/settings" element={<GroupSettings />} />
+          </Route>
 
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </BrowserRouter>
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </BrowserRouter>
+    </LangProvider>
   );
 }

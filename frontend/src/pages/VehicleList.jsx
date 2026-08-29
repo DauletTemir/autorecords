@@ -1,16 +1,16 @@
 import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { C } from "../theme";
-import { T } from "../i18n/translations";
+import { useLang } from "../i18n/LangContext";
 import { useCurrentGroup } from "../hooks/useCurrentGroup";
 import { useVehicles } from "../hooks/useVehicles";
 import { analyzePhoto } from "../lib/api";
 import { Btn, Input, Label, VinPlate } from "../components/ui";
 import AddVehicleModal from "../components/AddVehicleModal";
-
-const t = (k) => T.ru[k] || k;
+import LanguageSwitcher from "../components/LanguageSwitcher";
 
 export default function VehicleList() {
+  const { t, lang } = useLang();
   const { group, loading: groupLoading } = useCurrentGroup();
   const { vehicles, loading, addVehicle, addEntry } = useVehicles(group?.id);
   const [query, setQuery] = useState("");
@@ -29,7 +29,7 @@ export default function VehicleList() {
     setBusy(true);
     try {
       const knownVins = vehicles.map((v) => v.vin);
-      const extracted = await analyzePhoto(file, "ru", knownVins);
+      const extracted = await analyzePhoto(file, lang, knownVins);
       let vin = (extracted.vin || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
       if (!vin || vin.length < 11) {
         notify(`${t("aiNoVin")} нет VIN, добавьте автомобиль вручную`, "warn");
@@ -84,7 +84,10 @@ export default function VehicleList() {
           <h1 className="font-display font-bold" style={{ fontSize: 28, color: C.headingText }}>{group?.name || t("appTitle")}</h1>
           <div className="text-sm mt-1" style={{ color: C.bodyText }}>{t("appSub")}</div>
         </div>
-        <Link to="/app/settings" className="text-sm" style={{ color: C.accent }}>{t("groupSettings")}</Link>
+        <div className="flex items-center gap-4">
+          <LanguageSwitcher />
+          <Link to="/app/settings" className="text-sm" style={{ color: C.accent }}>{t("groupSettings")}</Link>
+        </div>
       </header>
 
       {toast && (

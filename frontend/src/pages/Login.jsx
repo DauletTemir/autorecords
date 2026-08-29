@@ -2,13 +2,13 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
 import { C } from "../theme";
-import { T } from "../i18n/translations";
+import { useLang } from "../i18n/LangContext";
 import { Btn, Field, Input } from "../components/ui";
 import GoogleAuthButton from "../components/GoogleAuthButton";
-
-const t = (k) => T.ru[k] || k;
+import LanguageSwitcher from "../components/LanguageSwitcher";
 
 export default function Login() {
+  const { t } = useLang();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
@@ -28,6 +28,7 @@ export default function Login() {
   return (
     <div className="font-body min-h-screen flex items-center justify-center px-4" style={{ background: C.pageBg }}>
       <form onSubmit={handleSubmit} className="w-full max-w-sm p-6" style={{ background: "#fff", borderRadius: 12 }}>
+        <div className="flex justify-end mb-3"><LanguageSwitcher /></div>
         <div className="font-display font-bold text-2xl mb-5" style={{ color: C.headingText }}>{t("login")}</div>
         <Field label={t("email")}>
           <Input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />

@@ -1,11 +1,10 @@
 import { useState } from "react";
-import { T } from "../i18n/translations";
+import { useLang } from "../i18n/LangContext";
 import { C } from "../theme";
 import { Btn, Field, Input, Modal } from "./ui";
 
-const t = (k) => T.ru[k] || k;
-
 export default function AddEntryModal({ onSave, onClose }) {
+  const { t } = useLang();
   const [e, setE] = useState({
     date: new Date().toISOString().slice(0, 10),
     service_type: "", description: "", mileage: "", cost: "", comment: "",

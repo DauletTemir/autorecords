@@ -107,4 +107,42 @@ describe("POST /api/analyze-photo", () => {
     expect(res.status).toBe(200);
     expect(res.body.vin).toBe("1HGCM82633A123456");
   });
+
+  it.each(["en", "ru", "kk"] as const)("passes lang=%s through to analyzeDocumentImage unchanged", async (lang) => {
+    vi.mocked(supabaseAdmin.auth.getUser).mockResolvedValue({
+      data: { user: { id: "user-1" } },
+      error: null,
+    } as never);
+    vi.mocked(analyzeDocumentImage).mockResolvedValue({
+      vin: "", brand: "", model: "", year: "", plate: "", date: "",
+      service_type: "", description: "", mileage: "", cost: "", comment: "",
+    });
+
+    await request(app)
+      .post("/api/analyze-photo")
+      .set("Authorization", "Bearer good-token")
+      .field("lang", lang)
+      .attach("photo", await makeRealJpeg(), "doc.jpg");
+
+    expect(analyzeDocumentImage).toHaveBeenCalledWith(expect.any(String), expect.any(String), lang, []);
+  });
+
+  it("falls back to ru for an unrecognized lang value instead of passing it through", async () => {
+    vi.mocked(supabaseAdmin.auth.getUser).mockResolvedValue({
+      data: { user: { id: "user-1" } },
+      error: null,
+    } as never);
+    vi.mocked(analyzeDocumentImage).mockResolvedValue({
+      vin: "", brand: "", model: "", year: "", plate: "", date: "",
+      service_type: "", description: "", mileage: "", cost: "", comment: "",
+    });
+
+    await request(app)
+      .post("/api/analyze-photo")
+      .set("Authorization", "Bearer good-token")
+      .field("lang", "fr")
+      .attach("photo", await makeRealJpeg(), "doc.jpg");
+
+    expect(analyzeDocumentImage).toHaveBeenCalledWith(expect.any(String), expect.any(String), "ru", []);
+  });
 });

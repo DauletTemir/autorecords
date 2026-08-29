@@ -1,15 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { C } from "../theme";
-import { T } from "../i18n/translations";
+import { useLang } from "../i18n/LangContext";
 import { useCurrentGroup } from "../hooks/useCurrentGroup";
 import { useGroupMembers } from "../hooks/useGroupMembers";
 import { supabase } from "../lib/supabaseClient";
 import { Btn, Field, Input, Label } from "../components/ui";
-
-const t = (k) => T.ru[k] || k;
+import LanguageSwitcher from "../components/LanguageSwitcher";
 
 export default function GroupSettings() {
+  const { t } = useLang();
   const navigate = useNavigate();
   const { group } = useCurrentGroup();
   const { members, invite, reload } = useGroupMembers(group?.id);
@@ -56,7 +56,10 @@ export default function GroupSettings() {
         {t("back")}
       </button>
 
-      <h1 className="font-display font-bold text-2xl mb-6" style={{ color: C.headingText }}>{t("groupSettings")}</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="font-display font-bold text-2xl" style={{ color: C.headingText }}>{t("groupSettings")}</h1>
+        <LanguageSwitcher />
+      </div>
 
       <section className="p-5 mb-5" style={{ background: C.card, borderRadius: 12 }}>
         <Field label={t("groupName")}>

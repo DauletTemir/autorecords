@@ -1,10 +1,9 @@
 import { useState } from "react";
-import { T } from "../i18n/translations";
+import { useLang } from "../i18n/LangContext";
 import { Btn, Field, Input, Modal } from "./ui";
 
-const t = (k) => T.ru[k] || k;
-
 export default function AddVehicleModal({ onSave, onClose }) {
+  const { t } = useLang();
   const [v, setV] = useState({ vin: "", brand: "", model: "", year: "", plate: "" });
   const set = (k) => (e) => setV({ ...v, [k]: e.target.value });
 
