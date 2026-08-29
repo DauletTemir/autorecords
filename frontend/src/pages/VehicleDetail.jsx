@@ -15,8 +15,10 @@ export default function VehicleDetail() {
   const { vin } = useParams();
   const navigate = useNavigate();
   const { group } = useCurrentGroup();
-  const { vehicles, loading, addEntry, deleteVehicle } = useVehicles(group?.id);
+  const { vehicles, loading, addEntry, updateEntry, deleteEntry, deleteVehicle } = useVehicles(group?.id);
   const [showForm, setShowForm] = useState(false);
+  const [editingEntry, setEditingEntry] = useState(null);
+  const [deletingEntryId, setDeletingEntryId] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [f, setF] = useState({ dateFrom: "", dateTo: "", type: "", costMin: "", costMax: "" });
 
@@ -112,11 +114,12 @@ export default function VehicleDetail() {
                   {["date", "type", "desc", "mileage", "cost", "comment"].map((k) => (
                     <th key={k} className="font-display uppercase text-left px-3 py-2 font-semibold" style={{ letterSpacing: "0.06em", fontSize: 13 }}>{t(k)}</th>
                   ))}
+                  <th className="no-print font-display uppercase text-left px-3 py-2 font-semibold" style={{ letterSpacing: "0.06em", fontSize: 13 }}>{t("actions")}</th>
                 </tr>
               </thead>
               <tbody>
-                {[...filtered].reverse().map((h, i) => (
-                  <tr key={i} style={{ borderTop: `1px solid ${C.line}` }}>
+                {[...filtered].reverse().map((h) => (
+                  <tr key={h.id} style={{ borderTop: `1px solid ${C.line}` }}>
                     <td className="px-3 py-2 font-mono whitespace-nowrap">{h.date || t("unknown")}</td>
                     <td className="px-3 py-2">
                       <span style={{ background: C.accent + "22", border: `1px solid ${C.accent}`, borderRadius: 6, padding: "1px 7px", fontSize: 13 }}>
@@ -127,6 +130,28 @@ export default function VehicleDetail() {
                     <td className="px-3 py-2 font-mono whitespace-nowrap">{h.mileage}</td>
                     <td className="px-3 py-2 font-mono whitespace-nowrap">{h.cost}</td>
                     <td className="px-3 py-2 text-xs" style={{ color: C.bodyText, maxWidth: 220 }}>{h.comment}</td>
+                    <td className="no-print px-3 py-2 whitespace-nowrap">
+                      <div className="flex gap-1">
+                        <button
+                          type="button"
+                          aria-label={t("editEntry")}
+                          title={t("editEntry")}
+                          onClick={() => setEditingEntry(h)}
+                          style={{ background: "none", border: "none", cursor: "pointer", fontSize: 15, padding: "2px 4px" }}
+                        >
+                          ✎
+                        </button>
+                        <button
+                          type="button"
+                          aria-label={t("deleteEntry")}
+                          title={t("deleteEntry")}
+                          onClick={() => setDeletingEntryId(h.id)}
+                          style={{ background: "none", border: "none", cursor: "pointer", fontSize: 15, padding: "2px 4px", color: C.danger }}
+                        >
+                          🗑
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -147,6 +172,47 @@ export default function VehicleDetail() {
             }
           }}
         />
+      )}
+
+      {editingEntry && (
+        <AddEntryModal
+          existingEntry={editingEntry}
+          onClose={() => setEditingEntry(null)}
+          onSave={async (entry) => {
+            try {
+              await updateEntry(editingEntry.id, entry);
+              setEditingEntry(null);
+            } catch (err) {
+              console.error("Failed to update service entry:", err.message);
+            }
+          }}
+        />
+      )}
+
+      {deletingEntryId && (
+        <div className="no-print fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(40,30,20,0.5)" }} onClick={() => setDeletingEntryId(null)}>
+          <div className="w-full max-w-sm p-5" style={{ background: C.card, borderRadius: 12, border: `2px solid ${C.danger}` }} onClick={(e) => e.stopPropagation()}>
+            <div className="font-display uppercase font-bold text-lg mb-2" style={{ color: C.danger }}>⚠ {t("confirmTitle")}</div>
+            <div className="text-sm mb-5">{t("confirmDeleteEntry")}</div>
+            <div className="flex gap-2 justify-end">
+              <Btn kind="ghost" onClick={() => setDeletingEntryId(null)}>{t("cancel")}</Btn>
+              <Btn
+                kind="danger"
+                onClick={async () => {
+                  try {
+                    await deleteEntry(deletingEntryId);
+                  } catch (err) {
+                    console.error("Failed to delete service entry:", err.message);
+                  } finally {
+                    setDeletingEntryId(null);
+                  }
+                }}
+              >
+                {t("confirmYes")}
+              </Btn>
+            </div>
+          </div>
+        </div>
       )}
 
       {confirmDelete && (

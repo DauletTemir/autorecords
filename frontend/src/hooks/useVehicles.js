@@ -55,6 +55,26 @@ export function useVehicles(orgId) {
     triggerBackup(orgId);
   }, [orgId, reload]);
 
+  const updateEntry = useCallback(async (entryId, updatedFields) => {
+    const { error } = await supabase
+      .from("service_entries")
+      .update({
+        ...updatedFields,
+        cost: updatedFields.cost === "" ? null : updatedFields.cost,
+      })
+      .eq("id", entryId);
+    if (error) throw error;
+    await reload();
+    triggerBackup(orgId);
+  }, [orgId, reload]);
+
+  const deleteEntry = useCallback(async (entryId) => {
+    const { error } = await supabase.from("service_entries").delete().eq("id", entryId);
+    if (error) throw error;
+    await reload();
+    triggerBackup(orgId);
+  }, [orgId, reload]);
+
   const deleteVehicle = useCallback(async (vehicleId) => {
     const { error } = await supabase.from("vehicles").delete().eq("id", vehicleId);
     if (error) throw error;
@@ -62,5 +82,5 @@ export function useVehicles(orgId) {
     triggerBackup(orgId);
   }, [orgId, reload]);
 
-  return { vehicles, loading, addVehicle, addEntry, deleteVehicle, reload };
+  return { vehicles, loading, addVehicle, addEntry, updateEntry, deleteEntry, deleteVehicle, reload };
 }
