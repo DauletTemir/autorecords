@@ -18,3 +18,18 @@ export function filterHistory(history, f) {
 export function sumCost(entries) {
   return entries.reduce((s, h) => s + (parseCost(h.cost) ?? 0), 0);
 }
+
+// Sorts by date; entries with a missing/empty date always sort to the end,
+// regardless of direction, since there's no chronological position to put
+// them in (matches the existing t("unknown") treatment of empty dates
+// elsewhere in the UI — undated entries are shown, but not ranked).
+export function sortHistory(entries, direction = "desc") {
+  const withDate = entries.filter((h) => h.date);
+  const withoutDate = entries.filter((h) => !h.date);
+
+  const sorted = [...withDate].sort((a, b) =>
+    direction === "asc" ? a.date.localeCompare(b.date) : b.date.localeCompare(a.date),
+  );
+
+  return [...sorted, ...withoutDate];
+}

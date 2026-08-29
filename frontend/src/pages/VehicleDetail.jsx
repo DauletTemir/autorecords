@@ -6,7 +6,7 @@ import { useCurrentGroup } from "../hooks/useCurrentGroup";
 import { useVehicles } from "../hooks/useVehicles";
 import { Btn, Input, Label, VinPlate } from "../components/ui";
 import AddEntryModal from "../components/AddEntryModal";
-import { filterHistory, sumCost } from "../lib/historyFilters";
+import { filterHistory, sortHistory, sumCost } from "../lib/historyFilters";
 
 const LOCALE_BY_LANG = { en: "en-US", ru: "ru-RU", kk: "kk-KZ" };
 
@@ -21,6 +21,7 @@ export default function VehicleDetail() {
   const [deletingEntryId, setDeletingEntryId] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [f, setF] = useState({ dateFrom: "", dateTo: "", type: "", costMin: "", costMax: "" });
+  const [sortDirection, setSortDirection] = useState("desc");
 
   if (loading || !vehicles) {
     return (
@@ -36,6 +37,7 @@ export default function VehicleDetail() {
   const types = [...new Set(vehicle.history.map((h) => h.service_type).filter(Boolean))];
 
   const filtered = filterHistory(vehicle.history, f);
+  const sorted = sortHistory(filtered, sortDirection);
   const totalCost = sumCost(filtered);
 
   const info = [["vin", vehicle.vin], ["brand", vehicle.brand], ["model", vehicle.model], ["year", vehicle.year], ["plate", vehicle.plate]];
@@ -111,14 +113,25 @@ export default function VehicleDetail() {
             <table className="w-full text-sm" style={{ borderCollapse: "collapse", minWidth: 640 }}>
               <thead>
                 <tr style={{ background: C.headingText, color: "#fff" }}>
-                  {["date", "type", "desc", "mileage", "cost", "comment"].map((k) => (
+                  <th className="font-display uppercase text-left px-3 py-2 font-semibold" style={{ letterSpacing: "0.06em", fontSize: 13 }}>
+                    <button
+                      type="button"
+                      onClick={() => setSortDirection((d) => (d === "desc" ? "asc" : "desc"))}
+                      aria-label={sortDirection === "desc" ? t("sortNewestFirst") : t("sortOldestFirst")}
+                      title={sortDirection === "desc" ? t("sortNewestFirst") : t("sortOldestFirst")}
+                      style={{ background: "none", border: "none", cursor: "pointer", color: "inherit", padding: 0, font: "inherit", letterSpacing: "inherit", display: "inline-flex", alignItems: "center", gap: 4 }}
+                    >
+                      {t("date")} <span aria-hidden="true">{sortDirection === "desc" ? "↓" : "↑"}</span>
+                    </button>
+                  </th>
+                  {["type", "desc", "mileage", "cost", "comment"].map((k) => (
                     <th key={k} className="font-display uppercase text-left px-3 py-2 font-semibold" style={{ letterSpacing: "0.06em", fontSize: 13 }}>{t(k)}</th>
                   ))}
                   <th className="no-print font-display uppercase text-left px-3 py-2 font-semibold" style={{ letterSpacing: "0.06em", fontSize: 13 }}>{t("actions")}</th>
                 </tr>
               </thead>
               <tbody>
-                {[...filtered].reverse().map((h) => (
+                {sorted.map((h) => (
                   <tr key={h.id} style={{ borderTop: `1px solid ${C.line}` }}>
                     <td className="px-3 py-2 font-mono whitespace-nowrap">{h.date || t("unknown")}</td>
                     <td className="px-3 py-2">

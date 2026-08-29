@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { filterHistory, parseCost, sumCost } from "../historyFilters";
+import { filterHistory, parseCost, sortHistory, sumCost } from "../historyFilters";
 
 const history = [
   { date: "2025-01-01", service_type: "Oil change", cost: "45.00" },
@@ -63,5 +63,38 @@ describe("sumCost", () => {
 
   it("returns 0 for an empty list", () => {
     expect(sumCost([])).toBe(0);
+  });
+});
+
+describe("sortHistory", () => {
+  it("sorts by date descending by default (most recent first)", () => {
+    const result = sortHistory(history);
+    expect(result.filter((h) => h.date).map((h) => h.date)).toEqual([
+      "2026-01-01", "2025-09-01", "2025-06-15", "2025-01-01",
+    ]);
+  });
+
+  it("sorts by date ascending when asked", () => {
+    const result = sortHistory(history, "asc");
+    expect(result.filter((h) => h.date).map((h) => h.date)).toEqual([
+      "2025-01-01", "2025-06-15", "2025-09-01", "2026-01-01",
+    ]);
+  });
+
+  it("always places undated entries at the end, regardless of direction", () => {
+    const desc = sortHistory(history, "desc");
+    const asc = sortHistory(history, "asc");
+    expect(desc[desc.length - 1].service_type).toBe("Parts");
+    expect(asc[asc.length - 1].service_type).toBe("Parts");
+  });
+
+  it("does not mutate the input array", () => {
+    const copy = [...history];
+    sortHistory(history, "asc");
+    expect(history).toEqual(copy);
+  });
+
+  it("returns an empty array unchanged", () => {
+    expect(sortHistory([], "desc")).toEqual([]);
   });
 });

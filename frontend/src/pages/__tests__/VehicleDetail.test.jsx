@@ -139,3 +139,93 @@ describe("VehicleDetail — editing and deleting a service entry", () => {
     expect(deleteEntry).not.toHaveBeenCalled();
   });
 });
+
+describe("VehicleDetail — history sort order", () => {
+  const OLD_ENTRY = { id: "entry-old", vehicle_id: "vehicle-1", date: "2025-01-01", service_type: "Oil change", description: "", mileage: "10000", cost: "40", comment: "" };
+  const MID_ENTRY = { id: "entry-mid", vehicle_id: "vehicle-1", date: "2025-06-15", service_type: "Tire rotation", description: "", mileage: "20000", cost: "30", comment: "" };
+  const NEW_ENTRY = { id: "entry-new", vehicle_id: "vehicle-1", date: "2025-12-01", service_type: "Brake pads", description: "", mileage: "30000", cost: "200", comment: "" };
+
+  function rowLabelsInOrder() {
+    // The page has two <table>s (vehicle info, then history) — scope to
+    // the history table specifically, and skip its own header row.
+    const tables = document.querySelectorAll("table");
+    const historyTable = tables[tables.length - 1];
+    return Array.from(historyTable.querySelectorAll("tbody tr")).map((row) => row.textContent);
+  }
+
+  let updateEntry;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    useCurrentGroup.mockReturnValue({ group: GROUP, loading: false });
+    updateEntry = vi.fn().mockResolvedValue(undefined);
+    useVehicles.mockReturnValue({
+      vehicles: [{ ...VEHICLE, history: [OLD_ENTRY, NEW_ENTRY, MID_ENTRY] }],
+      loading: false,
+      addEntry: vi.fn(),
+      updateEntry,
+      deleteEntry: vi.fn(),
+      deleteVehicle: vi.fn(),
+    });
+  });
+
+  it("renders entries sorted by date descending (newest first) by default", () => {
+    renderPage();
+    const rows = rowLabelsInOrder();
+    expect(rows[0]).toContain("Brake pads");
+    expect(rows[1]).toContain("Tire rotation");
+    expect(rows[2]).toContain("Oil change");
+  });
+
+  it("moves an edited entry to its new chronological position", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    // Edit the oldest entry (Oil change, 2025-01-01) to have the newest date.
+    const editButtons = screen.getAllByRole("button", { name: /Edit entry|Редактировать запись|Жазбаны өзгерту/i });
+    // Rows are newest-first: Brake pads, Tire rotation, Oil change — last edit button is Oil change's.
+    await user.click(editButtons[2]);
+
+    const dateInput = document.querySelector('input[name="date"]');
+    await user.clear(dateInput);
+    await user.type(dateInput, "2026-01-01");
+
+    await user.click(screen.getByRole("button", { name: /Save changes|Сохранить изменения|Өзгерiстердi сақтау/i }));
+    await waitFor(() => expect(updateEntry).toHaveBeenCalledTimes(1));
+    expect(updateEntry).toHaveBeenCalledWith("entry-old", expect.objectContaining({ date: "2026-01-01" }));
+
+    // Simulate the reload that would follow a real update: the hook
+    // returns the entry with its new date, and the row order must follow.
+    useVehicles.mockReturnValue({
+      vehicles: [{
+        ...VEHICLE,
+        history: [{ ...OLD_ENTRY, date: "2026-01-01" }, NEW_ENTRY, MID_ENTRY],
+      }],
+      loading: false,
+      addEntry: vi.fn(),
+      updateEntry,
+      deleteEntry: vi.fn(),
+      deleteVehicle: vi.fn(),
+    });
+    cleanup();
+    renderPage();
+
+    const rows = rowLabelsInOrder();
+    expect(rows[0]).toContain("Oil change");
+    expect(rows[1]).toContain("Brake pads");
+    expect(rows[2]).toContain("Tire rotation");
+  });
+
+  it("toggles sort direction when the date column header is clicked", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    expect(rowLabelsInOrder()[0]).toContain("Brake pads");
+
+    await user.click(screen.getByRole("button", { name: /Sorted newest first|Сначала новые|Ең жаңасынан/i }));
+
+    const rows = rowLabelsInOrder();
+    expect(rows[0]).toContain("Oil change");
+    expect(rows[2]).toContain("Brake pads");
+  });
+});
