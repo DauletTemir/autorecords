@@ -11,6 +11,8 @@ const envSchema = z.object({
   // Google Sheets backup — restricted to a single org (see docs/BACKUP.md)
   GOOGLE_SERVICE_ACCOUNT_EMAIL: z.string().email().optional(),
   GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY: z.string().optional(),
+  // Preferred over the raw multiline var above — see docs/BACKUP.md.
+  GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY_B64: z.string().optional(),
   BACKUP_SPREADSHEET_ID: z.string().optional(),
   BACKUP_ORG_ID: z.string().uuid().optional(),
 });

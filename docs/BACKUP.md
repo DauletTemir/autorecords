@@ -26,18 +26,47 @@ written to this sheet, regardless of how many groups exist in the app.
    `...@<project-id>.iam.gserviceaccount.com`) with Editor access.
 5. Set in `backend/.env`:
    - `GOOGLE_SERVICE_ACCOUNT_EMAIL` — the `client_email` field from the JSON
-   - `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY` — the `private_key` field from the
-     JSON, kept as one line with literal `\n` sequences (that's how it comes
-     out of the JSON file already — paste it as-is inside quotes)
+   - The private key, via **one** of these two variables:
+     - `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY_B64` (**preferred**) — base64-encode
+       the `private_key` field from the JSON and set the result here:
+       ```bash
+       # macOS/Linux
+       echo -n '-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n' | base64
+       # or, working from the downloaded JSON directly:
+       python3 -c "import json,base64; print(base64.b64encode(json.load(open('key.json'))['private_key'].encode()).decode())"
+       ```
+       This exists specifically for **cPanel/Passenger hosting**: a raw
+       multiline PEM value (or one relying on literal `\n` escapes) reliably
+       gets mangled by cPanel's shell-based startup scripts, which breaks
+       the app on deploy in a way that's easy to miss until the backup
+       feature silently stops working. A single-line base64 string survives
+       that untouched, and the backend decodes it back to the real PEM at
+       startup — prefer this variable over the one below whenever deploying
+       to cPanel.
+     - `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY` (legacy fallback, used only when
+       the `_B64` variable above is unset) — the `private_key` field from the
+       JSON, kept as one line with literal `\n` sequences (that's how it
+       comes out of the JSON file already — paste it as-is inside quotes).
+       Fine for local `.env` files, where multiline values work without
+       issue; not recommended on cPanel.
    - `BACKUP_SPREADSHEET_ID` — the ID from the sheet's URL
      (`docs.google.com/spreadsheets/d/<THIS_PART>/edit`)
    - `BACKUP_ORG_ID` — the UUID of the one group whose data should be backed up
 
-If any of these four variables is missing, `POST /api/backup` becomes a no-op
-(`{ skipped: true }`) — nothing breaks, the feature is just off.
+If `GOOGLE_SERVICE_ACCOUNT_EMAIL`, a private key (either variable), 
+`BACKUP_SPREADSHEET_ID`, or `BACKUP_ORG_ID` is missing, `POST /api/backup`
+becomes a no-op (`{ skipped: true }`) — nothing breaks, the feature is just
+off.
 
 ## Troubleshooting
 
+- **`error:1E08010C:DECODER routines::unsupported`, `ERR_OSSL_UNSUPPORTED`,
+  or JWT signing failures on cPanel specifically**, when the same
+  credentials work fine locally, usually mean the multiline
+  `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY` value got corrupted by cPanel's
+  startup scripts (stripped newlines, escaped quotes, truncated at a
+  blank line, etc.) — switch to `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY_B64`,
+  which isn't multiline and isn't affected by this.
 - **`ERROR: The caller does not have permission`** when calling the Sheets
   API directly means the sheet isn't shared with the service account's exact
   email, or you're looking at a different Google account/project than the

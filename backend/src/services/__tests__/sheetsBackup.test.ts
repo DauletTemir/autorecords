@@ -93,3 +93,96 @@ describe("backupOrgToSheets when configured", () => {
     expect(requests.map((r: { addSheet: { properties: { title: string } } }) => r.addSheet.properties.title)).toEqual(["Vehicles", "ServiceEntries"]);
   });
 });
+
+describe("private key resolution", () => {
+  const TARGET_ORG = "22222222-2222-2222-2222-222222222222";
+  const FAKE_PEM = "-----BEGIN PRIVATE KEY-----\nfakekeydata\n-----END PRIVATE KEY-----\n";
+
+  const jwtMock = vi.fn();
+  const getMock = vi.fn().mockResolvedValue({ data: { sheets: [{ properties: { title: "Vehicles" } }, { properties: { title: "ServiceEntries" } }] } });
+
+  function mockGoogleapis() {
+    vi.doMock("googleapis", () => ({
+      google: {
+        auth: { JWT: jwtMock },
+        sheets: () => ({
+          spreadsheets: {
+            get: getMock,
+            batchUpdate: vi.fn().mockResolvedValue({}),
+            values: { update: vi.fn().mockResolvedValue({}), clear: vi.fn().mockResolvedValue({}) },
+          },
+        }),
+      },
+    }));
+  }
+
+  function mockSupabaseEmpty() {
+    vi.doMock("../supabaseAdmin.js", () => ({
+      supabaseAdmin: {
+        from: vi.fn(() => ({
+          select: () => ({ eq: () => ({ order: async () => ({ data: [], error: null }) }) }),
+        })),
+      },
+    }));
+  }
+
+  beforeEach(() => {
+    vi.resetModules();
+    jwtMock.mockClear();
+    getMock.mockClear();
+    mockGoogleapis();
+    mockSupabaseEmpty();
+  });
+
+  it("decodes GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY_B64 and uses the decoded PEM directly", async () => {
+    vi.doMock("../../config/env.js", () => ({
+      env: {
+        GOOGLE_SERVICE_ACCOUNT_EMAIL: "test@test.iam.gserviceaccount.com",
+        GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY_B64: Buffer.from(FAKE_PEM, "utf-8").toString("base64"),
+        BACKUP_SPREADSHEET_ID: "fake-spreadsheet-id",
+        BACKUP_ORG_ID: TARGET_ORG,
+      },
+    }));
+
+    const { backupOrgToSheets } = await import("../sheetsBackup.js");
+    const result = await backupOrgToSheets(TARGET_ORG);
+
+    expect(result).toEqual({ skipped: false });
+    expect(jwtMock).toHaveBeenCalledWith(expect.objectContaining({ key: FAKE_PEM }));
+  });
+
+  it("falls back to the legacy \\n-escaped GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY when _B64 is unset", async () => {
+    vi.doMock("../../config/env.js", () => ({
+      env: {
+        GOOGLE_SERVICE_ACCOUNT_EMAIL: "test@test.iam.gserviceaccount.com",
+        GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY: FAKE_PEM.replace(/\n/g, "\\n"),
+        BACKUP_SPREADSHEET_ID: "fake-spreadsheet-id",
+        BACKUP_ORG_ID: TARGET_ORG,
+      },
+    }));
+
+    const { backupOrgToSheets } = await import("../sheetsBackup.js");
+    const result = await backupOrgToSheets(TARGET_ORG);
+
+    expect(result).toEqual({ skipped: false });
+    expect(jwtMock).toHaveBeenCalledWith(expect.objectContaining({ key: FAKE_PEM }));
+  });
+
+  it("prefers _B64 over the legacy variable when both are set", async () => {
+    const otherPem = "-----BEGIN PRIVATE KEY-----\nlegacyvalueshouldnotbeused\n-----END PRIVATE KEY-----\n";
+    vi.doMock("../../config/env.js", () => ({
+      env: {
+        GOOGLE_SERVICE_ACCOUNT_EMAIL: "test@test.iam.gserviceaccount.com",
+        GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY_B64: Buffer.from(FAKE_PEM, "utf-8").toString("base64"),
+        GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY: otherPem.replace(/\n/g, "\\n"),
+        BACKUP_SPREADSHEET_ID: "fake-spreadsheet-id",
+        BACKUP_ORG_ID: TARGET_ORG,
+      },
+    }));
+
+    const { backupOrgToSheets } = await import("../sheetsBackup.js");
+    await backupOrgToSheets(TARGET_ORG);
+
+    expect(jwtMock).toHaveBeenCalledWith(expect.objectContaining({ key: FAKE_PEM }));
+  });
+});

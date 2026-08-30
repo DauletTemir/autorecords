@@ -5,10 +5,21 @@ import { supabaseAdmin } from "./supabaseAdmin.js";
 const VEHICLES_RANGE = "Vehicles!A1:F1000";
 const ENTRIES_RANGE = "ServiceEntries!A1:H1000";
 
+// Prefer the base64-encoded variable — it survives cPanel/Passenger
+// startup scripts intact, where a raw multiline value (or one relying on
+// literal \n escapes) tends to get mangled. Falls back to the legacy
+// variable for local .env files, where multiline values work fine.
+function resolvePrivateKey(): string | undefined {
+  if (env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY_B64) {
+    return Buffer.from(env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY_B64, "base64").toString("utf-8");
+  }
+  return env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY?.replace(/\\n/g, "\n");
+}
+
 function isConfigured(): boolean {
   return Boolean(
     env.GOOGLE_SERVICE_ACCOUNT_EMAIL &&
-      env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY &&
+      resolvePrivateKey() &&
       env.BACKUP_SPREADSHEET_ID &&
       env.BACKUP_ORG_ID,
   );
@@ -17,7 +28,7 @@ function isConfigured(): boolean {
 function getSheetsClient() {
   const auth = new google.auth.JWT({
     email: env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-    key: env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY?.replace(/\\n/g, "\n"),
+    key: resolvePrivateKey(),
     scopes: ["https://www.googleapis.com/auth/spreadsheets"],
   });
   return google.sheets({ version: "v4", auth });
