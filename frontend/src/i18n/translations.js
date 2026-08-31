@@ -96,6 +96,7 @@ export const T = {
     inviteByEmail: "Invite by email",
     invite: "Invite",
     inviteSent: "Invitation sent",
+    logout: "Log out",
   },
   kk: {
     appTitle: "АВТОСЕРВИС БАЗАСЫ",
@@ -194,6 +195,7 @@ export const T = {
     inviteByEmail: "Email арқылы шақыру",
     invite: "Шақыру",
     inviteSent: "Шақыру жiберiлдi",
+    logout: "Шығу",
   },
   ru: {
     appTitle: "БАЗА АВТОСЕРВИСА",
@@ -292,6 +294,7 @@ export const T = {
     inviteByEmail: "Пригласить по email",
     invite: "Пригласить",
     inviteSent: "Приглашение отправлено",
+    logout: "Выйти",
   },
 };
 

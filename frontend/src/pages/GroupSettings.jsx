@@ -50,6 +50,11 @@ export default function GroupSettings() {
     }
   };
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate("/login");
+  };
+
   return (
     <div className="font-body min-h-screen px-4 sm:px-8 py-6 max-w-2xl mx-auto" style={{ background: C.pageBg, color: C.headingText }}>
       <button onClick={() => navigate("/app")} className="font-display uppercase font-semibold text-sm mb-4" style={{ color: C.bodyText, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
@@ -91,6 +96,8 @@ export default function GroupSettings() {
           <div className="text-sm mt-2" style={{ color: status.kind === "warn" ? C.danger : C.ok }}>{status.msg}</div>
         )}
       </section>
+
+      <Btn kind="danger" onClick={handleLogout}>{t("logout")}</Btn>
     </div>
   );
 }
