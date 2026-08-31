@@ -23,15 +23,22 @@ frontend's local setup.
 - **Frontend**: Cloudflare Pages, auto-deploying from GitHub on every push
   to `main`. Configuration details in [`frontend/README.md`](frontend/README.md#deployment).
 - **Backend**: runs as a Node.js app under cPanel/Passenger on Namecheap
-  shared hosting (Node 24.16.0). Deployment is **manual** — the shared
-  hosting firewall blocks SSH connections from GitHub Actions' dynamic
-  runner IPs, so there's no automated deploy step. After pushing to `main`:
+  shared hosting (Node 24). The shared hosting firewall blocks SSH
+  connections from GitHub Actions' dynamic runner IPs, so there's no CI-driven
+  deploy — but the cPanel-side deploy itself is a single click. After
+  pushing to `main`:
   1. In cPanel → **Git Version Control**, open the `autorecords` repo and
      click **Update from Remote** to pull the latest `main`.
-  2. Over SSH/Terminal, in the `backend/` directory: `npm ci && npm run build`.
-  3. Restart Passenger — either `touch tmp/restart.txt` directly, or click
-     **Deploy HEAD Commit** in Git Version Control, which runs the task
-     list in `.cpanel.yml` (currently just the same `touch`).
+  2. Click **Deploy HEAD Commit**. This runs `.cpanel.yml`'s task list,
+     which installs dependencies (including dev, since `tsc` needs to run),
+     rebuilds `backend/dist/`, and touches `tmp/restart.txt` to restart
+     Passenger — the same three steps that used to be run by hand over SSH.
+
+  If the automated deploy script itself fails (check
+  `backend/stderr.log` and the cPanel deploy log), see
+  [`docs/BACKUP.md`](docs/BACKUP.md#troubleshooting) for the manual
+  fallback: activate the app's nodevenv, then run `npm ci --include=dev`
+  and `npm run build` by hand over SSH/Terminal.
 
 CI runs on every push/PR to `main` via `.github/workflows/ci.yml`
 (build + test for both `frontend/` and `backend/`).

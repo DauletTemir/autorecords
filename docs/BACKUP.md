@@ -60,6 +60,55 @@ off.
 
 ## Troubleshooting
 
+- **Backup silently returns `{ skipped: true }` even though all four env
+  vars show correct values in cPanel's Node.js App UI** — this almost
+  always means the *running* process doesn't actually have those values,
+  even if the UI does. Two distinct causes, check in this order:
+  1. **`backend/dist/` is stale** — Passenger runs whatever's already
+     compiled in `dist/`, not your source. If a `git pull` landed new
+     source but `npm run build` never re-ran (e.g. an interrupted or
+     partial manual deploy from before `.cpanel.yml` automated this),
+     the old compiled JS keeps running regardless of what env vars are
+     set or how many times you click Restart. Confirm with:
+     ```bash
+     grep -c GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY_B64 backend/dist/services/sheetsBackup.js
+     ```
+     A `0` means the deployed build predates this variable's support —
+     redeploy (see below).
+  2. **The running process predates your env var change** — Passenger
+     injects env vars only at process spawn time, not per-request or on
+     a config save. Clicking the cPanel UI's "Restart" touches a
+     `restart.txt` file that Passenger polls on a throttled schedule, and
+     that poll can be missed. A **Stop App, wait a few seconds, then
+     Start App** cycle forces an actual respawn more reliably than
+     Restart. To confirm which process is actually serving traffic and
+     what it sees:
+     ```bash
+     curl -s https://<your-backend-domain>/health -o /dev/null && \
+       ps -u <cpanel-username> -f | grep -iE "node|lsnode|passenger" | grep -v grep
+     # then, with the PID from that output, immediately:
+     tr '\0' '\n' < /proc/<PID>/environ | grep -E '^(BACKUP_ORG_ID|BACKUP_SPREADSHEET_ID|GOOGLE_SERVICE_ACCOUNT_EMAIL|GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY_B64)=' | cut -d= -f1
+     ```
+     (Only names are printed, never values — safe to paste into a chat
+     or issue when asking for help.) The process dies quickly when idle
+     on shared hosting, so run both commands as a single `&&` chain, not
+     as separate steps — otherwise the PID you looked up will already be
+     gone by the time you check its environment.
+- **Deploying the backend without `.cpanel.yml`'s automated build** — the
+  primary path is `git pull` + **Deploy HEAD Commit** in cPanel's Git
+  Version Control (see the root [README](../README.md#deployment)). If
+  that automated script itself fails, here's the manual fallback over
+  SSH/Terminal:
+  ```bash
+  source /home/<cpanel-username>/nodevenv/repositories/autorecords/backend/<node-version>/bin/activate
+  cd /home/<cpanel-username>/repositories/autorecords/backend
+  npm ci --include=dev   # --include=dev is required: NODE_ENV=production
+                          # in this environment makes plain `npm ci` skip
+                          # devDependencies, which is where `typescript`
+                          # (and therefore `tsc`) lives
+  npm run build
+  touch tmp/restart.txt
+  ```
 - **`error:1E08010C:DECODER routines::unsupported`, `ERR_OSSL_UNSUPPORTED`,
   or JWT signing failures on cPanel specifically**, when the same
   credentials work fine locally, usually mean the multiline

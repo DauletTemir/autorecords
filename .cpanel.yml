@@ -1,4 +1,7 @@
 ---
 deployment:
   tasks:
-    - /bin/touch /home/prodasqp/repositories/autorecords/backend/tmp/restart.txt
+    - export DEPLOYPATH=/home/prodasqp/repositories/autorecords/backend
+    - export PATH=/home/prodasqp/nodevenv/repositories/autorecords/backend/24/bin:$PATH
+    - /bin/bash -c "cd $DEPLOYPATH && npm ci --include=dev && npm run build"
+    - /bin/touch $DEPLOYPATH/tmp/restart.txt
