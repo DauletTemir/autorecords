@@ -94,6 +94,22 @@ off.
      on shared hosting, so run both commands as a single `&&` chain, not
      as separate steps — otherwise the PID you looked up will already be
      gone by the time you check its environment.
+
+     **If Stop App → Start App still doesn't change the PID** (confirmed
+     to happen on this host — the UI reports success but the same PID
+     keeps serving traffic with the old in-memory code), the only
+     reliable fix is to kill that PID directly from Terminal so Passenger
+     is forced to spawn a genuinely new process:
+     ```bash
+     kill <PID>
+     sleep 5
+     curl -s https://<your-backend-domain>/health -o /dev/null -w '%{http_code}\n'
+     ps -u <cpanel-username> -f | grep -iE "node|lsnode|passenger" | grep -v grep
+     ```
+     Confirm the PID in the last line differs from the one you killed
+     before treating the deploy as complete — a matching PID means
+     Passenger respawned it from a stale worker pool rather than starting
+     fresh, and you're still running old code.
 - **Deploying the backend without `.cpanel.yml`'s automated build** — the
   primary path is `git pull` + **Deploy HEAD Commit** in cPanel's Git
   Version Control (see the root [README](../README.md#deployment)). If
