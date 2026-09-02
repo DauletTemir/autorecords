@@ -1,16 +1,18 @@
 import { useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { C } from "../theme";
 import { useLang } from "../i18n/LangContext";
 import { useCurrentGroup } from "../hooks/useCurrentGroup";
 import { useVehicles } from "../hooks/useVehicles";
 import { analyzePhoto } from "../lib/api";
+import { supabase } from "../lib/supabaseClient";
 import { Btn, Input, Label, VinPlate } from "../components/ui";
 import AddVehicleModal from "../components/AddVehicleModal";
 import LanguageSwitcher from "../components/LanguageSwitcher";
 
 export default function VehicleList() {
   const { t, lang } = useLang();
+  const navigate = useNavigate();
   const { group, loading: groupLoading } = useCurrentGroup();
   const { vehicles, loading, addVehicle, addEntry } = useVehicles(group?.id);
   const [query, setQuery] = useState("");
@@ -63,6 +65,11 @@ export default function VehicleList() {
     }
   };
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate("/login");
+  };
+
   if (groupLoading || loading || !vehicles) {
     return (
       <div className="flex items-center justify-center min-h-screen" style={{ background: C.pageBg }}>
@@ -87,6 +94,13 @@ export default function VehicleList() {
         <div className="flex items-center gap-4">
           <LanguageSwitcher />
           <Link to="/app/settings" className="text-sm" style={{ color: C.accent }}>{t("groupSettings")}</Link>
+          <button
+            onClick={handleLogout}
+            className="font-display uppercase font-semibold text-sm"
+            style={{ color: C.danger, background: "none", border: "none", cursor: "pointer", padding: 0 }}
+          >
+            {t("logout")}
+          </button>
         </div>
       </header>
 
