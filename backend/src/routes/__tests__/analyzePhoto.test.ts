@@ -14,6 +14,9 @@ vi.mock("../../services/gemini.js", () => ({
   analyzeDocumentImage: vi.fn(),
 }));
 
+const heicConvertMock = vi.fn();
+vi.mock("heic-convert", () => ({ default: heicConvertMock }));
+
 const { supabaseAdmin } = await import("../../services/supabaseAdmin.js");
 const { analyzeDocumentImage } = await import("../../services/gemini.js");
 const { app } = await import("../../app.js");
@@ -26,6 +29,15 @@ async function makeRealJpeg(): Promise<Buffer> {
   return sharp({ create: { width: 20, height: 20, channels: 3, background: "#ffffff" } })
     .jpeg()
     .toBuffer();
+}
+
+// Minimal ISOBMFF container with the "ftyp"/"heic" layout real iPhone
+// photos have — see imageProcessing.ts for why the brand bytes matter.
+function makeFakeHeicPhoto(): Buffer {
+  const buf = Buffer.alloc(20);
+  buf.write("ftyp", 4, "ascii");
+  buf.write("heic", 8, "ascii");
+  return buf;
 }
 
 describe("POST /api/analyze-photo", () => {
@@ -106,6 +118,37 @@ describe("POST /api/analyze-photo", () => {
 
     expect(res.status).toBe(200);
     expect(res.body.vin).toBe("1HGCM82633A123456");
+  });
+
+  it("accepts an iPhone-style HEIC photo instead of rejecting it as an unrecognized format", async () => {
+    vi.mocked(supabaseAdmin.auth.getUser).mockResolvedValue({
+      data: { user: { id: "user-1" } },
+      error: null,
+    } as never);
+    heicConvertMock.mockResolvedValue(await makeRealJpeg());
+    vi.mocked(analyzeDocumentImage).mockResolvedValue({
+      vin: "1HGCM82633AHEIC01",
+      brand: "Toyota",
+      model: "Camry",
+      year: "2021",
+      plate: "",
+      date: "2026-03-01",
+      service_type: "Tire rotation",
+      description: "",
+      mileage: "30000",
+      cost: "25.00",
+      comment: "",
+    });
+
+    const res = await request(app)
+      .post("/api/analyze-photo")
+      .set("Authorization", "Bearer good-token")
+      .field("lang", "en")
+      .attach("photo", makeFakeHeicPhoto(), "IMG_1234.heic");
+
+    expect(res.status).toBe(200);
+    expect(res.body.vin).toBe("1HGCM82633AHEIC01");
+    expect(heicConvertMock).toHaveBeenCalled();
   });
 
   it("maps a Gemini quota/rate-limit failure to a quota_exceeded code without leaking the raw provider error", async () => {
