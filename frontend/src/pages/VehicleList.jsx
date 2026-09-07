@@ -58,7 +58,10 @@ export default function VehicleList() {
           : `${t("aiAdded")} ${vehicleLabel}${savedWhat ? `: ${savedWhat}` : ""}`,
       );
     } catch (e) {
-      const message = e.message === "quota_exceeded" ? t("aiQuotaExceeded") : t("aiError");
+      const message =
+        e.message === "quota_exceeded" ? t("aiQuotaExceeded")
+        : e.message === "service_unavailable" ? t("aiServiceUnavailable")
+        : t("aiError");
       notify(message, "warn");
     } finally {
       setBusy(false);

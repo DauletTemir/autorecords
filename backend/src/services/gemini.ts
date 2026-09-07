@@ -64,21 +64,44 @@ export function extractJson(text: string): ExtractedDocument {
   return result;
 }
 
+function isTransientOverload(err: unknown): boolean {
+  const message = err instanceof Error ? err.message : String(err);
+  return /"code":503|UNAVAILABLE|overloaded|high demand/i.test(message);
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// Gemini occasionally returns 503 UNAVAILABLE during brief spikes in
+// platform-wide demand, unrelated to our own quota — Google's own error
+// message calls these "usually temporary". A couple of short retries
+// resolves most of them without the user ever seeing an error.
+const OVERLOAD_RETRY_DELAYS_MS = [1000, 3000];
+
 export async function analyzeDocumentImage(
   base64: string,
   mediaType: string,
   lang: SupportedLang,
   knownVins: string[],
 ): Promise<ExtractedDocument> {
-  const response = await ai.models.generateContent({
-    model: "gemini-3.5-flash",
-    contents: [
-      { inlineData: { data: base64, mimeType: mediaType } },
-      { text: buildPrompt(lang, knownVins) },
-    ],
-  });
+  const contents = [
+    { inlineData: { data: base64, mimeType: mediaType } },
+    { text: buildPrompt(lang, knownVins) },
+  ];
 
-  const text = response.text;
-  if (!text) throw new Error("Empty response from model");
-  return extractJson(text);
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= OVERLOAD_RETRY_DELAYS_MS.length; attempt++) {
+    try {
+      const response = await ai.models.generateContent({ model: "gemini-3.5-flash", contents });
+      const text = response.text;
+      if (!text) throw new Error("Empty response from model");
+      return extractJson(text);
+    } catch (err) {
+      lastError = err;
+      if (!isTransientOverload(err) || attempt === OVERLOAD_RETRY_DELAYS_MS.length) throw err;
+      await sleep(OVERLOAD_RETRY_DELAYS_MS[attempt]);
+    }
+  }
+  throw lastError;
 }

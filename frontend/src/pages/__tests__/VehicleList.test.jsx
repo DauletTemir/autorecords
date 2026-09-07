@@ -169,6 +169,20 @@ describe("VehicleList — photo upload error handling", () => {
     expect(addEntry).not.toHaveBeenCalled();
   });
 
+  it("shows the service-unavailable translation when Gemini is temporarily overloaded", async () => {
+    analyzePhoto.mockRejectedValue(new Error("service_unavailable"));
+
+    renderPage();
+    await uploadPhoto();
+
+    expect(await screen.findByText(/временно перегружен/i)).toBeInTheDocument();
+    expect(screen.queryByText(/service_unavailable/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/достигнут дневной лимит/i)).not.toBeInTheDocument();
+
+    expect(addVehicle).not.toHaveBeenCalled();
+    expect(addEntry).not.toHaveBeenCalled();
+  });
+
   it("falls back to the generic aiError translation for any other failure", async () => {
     analyzePhoto.mockRejectedValue(new Error("ai_analysis_failed"));
 

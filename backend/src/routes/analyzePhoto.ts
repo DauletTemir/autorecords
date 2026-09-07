@@ -48,8 +48,13 @@ analyzePhotoRouter.post(
       console.error("analyze-photo failed:", message);
 
       const isQuotaExceeded = /RESOURCE_EXHAUSTED|quota/i.test(message);
+      const isServiceUnavailable = /"code":503|UNAVAILABLE|overloaded|high demand/i.test(message);
       res.status(502).json({
-        error: isQuotaExceeded ? "quota_exceeded" : "ai_analysis_failed",
+        error: isQuotaExceeded
+          ? "quota_exceeded"
+          : isServiceUnavailable
+            ? "service_unavailable"
+            : "ai_analysis_failed",
       });
     }
   },

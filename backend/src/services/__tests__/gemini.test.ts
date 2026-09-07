@@ -1,5 +1,14 @@
-import { describe, expect, it } from "vitest";
-import { extractJson } from "../gemini.js";
+import { describe, expect, it, vi, beforeEach } from "vitest";
+
+const generateContentMock = vi.fn();
+vi.mock("@google/genai", () => ({
+  GoogleGenAI: function GoogleGenAI() {
+    return { models: { generateContent: generateContentMock } };
+  },
+}));
+vi.mock("../../config/env.js", () => ({ env: { GEMINI_API_KEY: "fake-key" } }));
+
+const { extractJson, analyzeDocumentImage } = await import("../gemini.js");
 
 describe("extractJson", () => {
   it("parses a clean JSON object", () => {
@@ -33,5 +42,55 @@ describe("extractJson", () => {
     const result = extractJson(text);
     expect(result.mileage).toBe("");
     expect(result.comment).toBe("");
+  });
+});
+
+describe("analyzeDocumentImage — transient overload retry", () => {
+  const VALID_RESPONSE = { text: '{"vin":"ABC123","brand":"Kia","model":"Sportage","year":"","plate":"","date":"","service_type":"","description":"","mileage":"","cost":"","comment":""}' };
+  const OVERLOAD_ERROR = new Error('{"error":{"code":503,"message":"This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.","status":"UNAVAILABLE"}}');
+
+  beforeEach(() => {
+    generateContentMock.mockReset();
+    vi.useFakeTimers();
+  });
+
+  it("returns the successful result on the first try without retrying", async () => {
+    generateContentMock.mockResolvedValue(VALID_RESPONSE);
+
+    const result = await analyzeDocumentImage("base64data", "image/jpeg", "en", []);
+
+    expect(result.brand).toBe("Kia");
+    expect(generateContentMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("retries after a transient 503/UNAVAILABLE error and succeeds on the second attempt", async () => {
+    generateContentMock.mockRejectedValueOnce(OVERLOAD_ERROR).mockResolvedValueOnce(VALID_RESPONSE);
+
+    const promise = analyzeDocumentImage("base64data", "image/jpeg", "en", []);
+    await vi.runAllTimersAsync();
+    const result = await promise;
+
+    expect(result.brand).toBe("Kia");
+    expect(generateContentMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("gives up and throws after exhausting all retries on persistent overload", async () => {
+    generateContentMock.mockRejectedValue(OVERLOAD_ERROR);
+
+    const promise = analyzeDocumentImage("base64data", "image/jpeg", "en", []);
+    const assertion = expect(promise).rejects.toThrow(/UNAVAILABLE/);
+    await vi.runAllTimersAsync();
+    await assertion;
+
+    // Initial attempt + 2 retries per OVERLOAD_RETRY_DELAYS_MS.
+    expect(generateContentMock).toHaveBeenCalledTimes(3);
+  });
+
+  it("does not retry a non-transient error (e.g. quota exceeded)", async () => {
+    const quotaError = new Error('{"error":{"code":429,"message":"You exceeded your current quota","status":"RESOURCE_EXHAUSTED"}}');
+    generateContentMock.mockRejectedValue(quotaError);
+
+    await expect(analyzeDocumentImage("base64data", "image/jpeg", "en", [])).rejects.toThrow(/RESOURCE_EXHAUSTED/);
+    expect(generateContentMock).toHaveBeenCalledTimes(1);
   });
 });

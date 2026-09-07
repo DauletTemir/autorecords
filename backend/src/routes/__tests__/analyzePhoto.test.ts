@@ -171,6 +171,25 @@ describe("POST /api/analyze-photo", () => {
     expect(JSON.stringify(res.body)).not.toMatch(/RESOURCE_EXHAUSTED|ai\.google\.dev/);
   });
 
+  it("maps a persistent Gemini 503/UNAVAILABLE overload to a service_unavailable code", async () => {
+    vi.mocked(supabaseAdmin.auth.getUser).mockResolvedValue({
+      data: { user: { id: "user-1" } },
+      error: null,
+    } as never);
+    vi.mocked(analyzeDocumentImage).mockRejectedValue(
+      new Error('{"error":{"code":503,"message":"This model is currently experiencing high demand.","status":"UNAVAILABLE"}}'),
+    );
+
+    const res = await request(app)
+      .post("/api/analyze-photo")
+      .set("Authorization", "Bearer good-token")
+      .field("lang", "en")
+      .attach("photo", await makeRealJpeg(), "doc.jpg");
+
+    expect(res.status).toBe(502);
+    expect(res.body).toEqual({ error: "service_unavailable" });
+  });
+
   it("maps any other Gemini failure to a generic ai_analysis_failed code", async () => {
     vi.mocked(supabaseAdmin.auth.getUser).mockResolvedValue({
       data: { user: { id: "user-1" } },
