@@ -6,7 +6,8 @@ import { useCurrentGroup } from "../hooks/useCurrentGroup";
 import { useVehicles } from "../hooks/useVehicles";
 import { analyzePhoto } from "../lib/api";
 import { supabase } from "../lib/supabaseClient";
-import { Btn, Input, Label, VinPlate } from "../components/ui";
+import { findDuplicateEntry } from "../lib/duplicateDetection";
+import { Btn, Input, Label, Modal, VinPlate } from "../components/ui";
 import AddVehicleModal from "../components/AddVehicleModal";
 import LanguageSwitcher from "../components/LanguageSwitcher";
 
@@ -19,11 +20,32 @@ export default function VehicleList() {
   const [showAdd, setShowAdd] = useState(false);
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState(null);
+  const [pendingDuplicate, setPendingDuplicate] = useState(null);
   const fileRef = useRef(null);
 
   const notify = (msg, kind = "ok") => {
     setToast({ msg, kind });
     setTimeout(() => setToast(null), kind === "warn" ? 12000 : 6000);
+  };
+
+  const saveEntry = async (vehicle, extracted, isNew) => {
+    await addEntry(vehicle.id, {
+      date: extracted.date || null,
+      service_type: extracted.service_type || "",
+      description: extracted.description || "",
+      mileage: extracted.mileage || "",
+      cost: extracted.cost || "",
+      comment: extracted.comment || "",
+      receipt_number: extracted.receipt_number || "",
+    });
+
+    const savedWhat = [extracted.service_type, extracted.date].filter(Boolean).join(" — ");
+    const vehicleLabel = `${extracted.brand} ${extracted.model}`;
+    notify(
+      isNew
+        ? `${t("aiAdded")} ${vehicleLabel} (${t("newVehicle")})${savedWhat ? `: ${savedWhat}` : ""}`
+        : `${t("aiAdded")} ${vehicleLabel}${savedWhat ? `: ${savedWhat}` : ""}`,
+    );
   };
 
   const handlePhoto = async (file) => {
@@ -41,22 +63,13 @@ export default function VehicleList() {
       const isNew = !existing;
       const vehicle = existing ?? await addVehicle({ vin, brand: extracted.brand, model: extracted.model, year: extracted.year, plate: extracted.plate });
 
-      await addEntry(vehicle.id, {
-        date: extracted.date || null,
-        service_type: extracted.service_type || "",
-        description: extracted.description || "",
-        mileage: extracted.mileage || "",
-        cost: extracted.cost || "",
-        comment: extracted.comment || "",
-      });
+      const duplicate = existing ? findDuplicateEntry(extracted, existing.history) : null;
+      if (duplicate) {
+        setPendingDuplicate({ vehicle, extracted, isNew, duplicate });
+        return;
+      }
 
-      const savedWhat = [extracted.service_type, extracted.date].filter(Boolean).join(" — ");
-      const vehicleLabel = `${extracted.brand} ${extracted.model}`;
-      notify(
-        isNew
-          ? `${t("aiAdded")} ${vehicleLabel} (${t("newVehicle")})${savedWhat ? `: ${savedWhat}` : ""}`
-          : `${t("aiAdded")} ${vehicleLabel}${savedWhat ? `: ${savedWhat}` : ""}`,
-      );
+      await saveEntry(vehicle, extracted, isNew);
     } catch (e) {
       const message =
         e.message === "quota_exceeded" ? t("aiQuotaExceeded")
@@ -66,6 +79,20 @@ export default function VehicleList() {
     } finally {
       setBusy(false);
       if (fileRef.current) fileRef.current.value = "";
+    }
+  };
+
+  const confirmSaveDuplicate = async () => {
+    if (!pendingDuplicate) return;
+    const { vehicle, extracted, isNew } = pendingDuplicate;
+    setPendingDuplicate(null);
+    setBusy(true);
+    try {
+      await saveEntry(vehicle, extracted, isNew);
+    } catch {
+      notify(t("aiError"), "warn");
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -187,6 +214,24 @@ export default function VehicleList() {
           onSave={async (info) => { await addVehicle(info); setShowAdd(false); }}
           onClose={() => setShowAdd(false)}
         />
+      )}
+
+      {pendingDuplicate && (
+        <Modal title={t("duplicateTitle")} onClose={() => setPendingDuplicate(null)}>
+          <div className="text-sm mb-4" style={{ color: C.bodyText }}>
+            {t("duplicateMessage")}
+          </div>
+          <div className="text-sm mb-5 p-3" style={{ background: C.pageBg, borderRadius: 8 }}>
+            <div>{t("date")}: <span className="font-mono">{pendingDuplicate.duplicate.date || t("unknown")}</span></div>
+            <div>{t("type")}: {pendingDuplicate.duplicate.service_type || t("unknown")}</div>
+            <div>{t("mileage")}: <span className="font-mono">{pendingDuplicate.duplicate.mileage || t("unknown")}</span></div>
+            <div>{t("cost")}: <span className="font-mono">{pendingDuplicate.duplicate.cost || t("unknown")}</span></div>
+          </div>
+          <div className="flex gap-2 justify-end">
+            <Btn kind="ghost" onClick={() => setPendingDuplicate(null)}>{t("cancel")}</Btn>
+            <Btn kind="danger" onClick={confirmSaveDuplicate}>{t("duplicateSaveAnyway")}</Btn>
+          </div>
+        </Modal>
       )}
     </div>
   );

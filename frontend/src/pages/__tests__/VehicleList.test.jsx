@@ -92,6 +92,7 @@ describe("VehicleList — photo upload writes a service entry", () => {
       mileage: "52000",
       cost: "49.99",
       comment: "Quick Lube",
+      receipt_number: "",
     });
 
     expect(await screen.findByText(/Oil change/)).toBeInTheDocument();
@@ -137,6 +138,106 @@ describe("VehicleList — photo upload writes a service entry", () => {
     }));
 
     expect(await screen.findByText(/Brake replacement/)).toBeInTheDocument();
+  });
+});
+
+describe("VehicleList — duplicate receipt detection", () => {
+  let addVehicle;
+  let addEntry;
+
+  const EXISTING_ENTRY = {
+    id: "entry-existing",
+    date: "2026-06-06",
+    service_type: "Spark plugs",
+    description: "Spark plugs replacement (all 4)",
+    mileage: "180000",
+    cost: "45.00",
+    comment: "",
+    receipt_number: "No. 4521",
+  };
+  const EXISTING_VEHICLE = {
+    id: "vehicle-1", vin: "1HGCM82633A123456", brand: "Honda", model: "Accord", year: "2018", plate: "",
+    history: [EXISTING_ENTRY],
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    useCurrentGroup.mockReturnValue({ group: GROUP, loading: false });
+    addVehicle = vi.fn();
+    addEntry = vi.fn().mockResolvedValue(undefined);
+    useVehicles.mockReturnValue({ vehicles: [EXISTING_VEHICLE], loading: false, addVehicle, addEntry });
+  });
+
+  it("shows a confirmation modal instead of saving immediately when the receipt_number matches an existing entry", async () => {
+    analyzePhoto.mockResolvedValue({
+      vin: "1HGCM82633A123456",
+      brand: "Honda",
+      model: "Accord",
+      date: "2026-06-06",
+      service_type: "Spark plugs",
+      mileage: "180000",
+      cost: "45.00",
+      comment: "",
+      receipt_number: "No. 4521",
+    });
+
+    renderPage();
+    await uploadPhoto();
+
+    expect(await screen.findByText(/Possible duplicate|Возможный дубликат|Ықтимал қайталану/i)).toBeInTheDocument();
+    expect(addEntry).not.toHaveBeenCalled();
+  });
+
+  it("does not save when the duplicate confirmation is cancelled", async () => {
+    const user = userEvent.setup();
+    analyzePhoto.mockResolvedValue({
+      vin: "1HGCM82633A123456", brand: "Honda", model: "Accord",
+      date: "2026-06-06", service_type: "Spark plugs", mileage: "180000", cost: "45.00", comment: "",
+      receipt_number: "No. 4521",
+    });
+
+    renderPage();
+    await uploadPhoto();
+    await screen.findByText(/Possible duplicate|Возможный дубликат|Ықтимал қайталану/i);
+
+    await user.click(screen.getByRole("button", { name: /Cancel|Отмена|Бас тарту/i }));
+
+    expect(addEntry).not.toHaveBeenCalled();
+  });
+
+  it("saves the entry when the user confirms 'save anyway'", async () => {
+    const user = userEvent.setup();
+    analyzePhoto.mockResolvedValue({
+      vin: "1HGCM82633A123456", brand: "Honda", model: "Accord",
+      date: "2026-06-06", service_type: "Spark plugs", mileage: "180000", cost: "45.00", comment: "",
+      receipt_number: "No. 4521",
+    });
+
+    renderPage();
+    await uploadPhoto();
+    await screen.findByText(/Possible duplicate|Возможный дубликат|Ықтимал қайталану/i);
+
+    await user.click(screen.getByRole("button", { name: /Save anyway|Всё равно сохранить|Бәрiбiр сақтау/i }));
+
+    await waitFor(() => expect(addEntry).toHaveBeenCalledTimes(1));
+    expect(addEntry).toHaveBeenCalledWith("vehicle-1", expect.objectContaining({
+      receipt_number: "No. 4521",
+      date: "2026-06-06",
+    }));
+  });
+
+  it("saves immediately without a modal when the receipt_number differs from all existing entries", async () => {
+    analyzePhoto.mockResolvedValue({
+      vin: "1HGCM82633A123456", brand: "Honda", model: "Accord",
+      date: "2026-08-01", service_type: "Tire rotation", mileage: "185000", cost: "30.00", comment: "",
+      receipt_number: "No. 9999",
+    });
+
+    renderPage();
+    await uploadPhoto();
+
+    await waitFor(() => expect(addEntry).toHaveBeenCalledTimes(1));
+    expect(screen.queryByText(/Possible duplicate|Возможный дубликат|Ықтимал қайталану/i)).not.toBeInTheDocument();
   });
 });
 

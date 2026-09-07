@@ -12,11 +12,18 @@ const { extractJson, analyzeDocumentImage } = await import("../gemini.js");
 
 describe("extractJson", () => {
   it("parses a clean JSON object", () => {
-    const text = '{"vin":"1HGCM82633A123456","brand":"Honda","model":"Accord","year":"2018","plate":"","date":"2026-01-01","service_type":"Oil change","description":"","mileage":"50000","cost":"45.00","comment":""}';
+    const text = '{"vin":"1HGCM82633A123456","brand":"Honda","model":"Accord","year":"2018","plate":"","date":"2026-01-01","service_type":"Oil change","description":"","mileage":"50000","cost":"45.00","comment":"","receipt_number":"No. 4521"}';
     const result = extractJson(text);
     expect(result.vin).toBe("1HGCM82633A123456");
     expect(result.brand).toBe("Honda");
     expect(result.cost).toBe("45.00");
+    expect(result.receipt_number).toBe("No. 4521");
+  });
+
+  it("defaults receipt_number to empty when the document has none", () => {
+    const text = '{"vin":"ABC123","receipt_number":""}';
+    const result = extractJson(text);
+    expect(result.receipt_number).toBe("");
   });
 
   it("extracts JSON even when wrapped in markdown fences or prose", () => {

@@ -30,6 +30,7 @@ create table service_entries (
   vehicle_id uuid not null references vehicles(id) on delete cascade,
   date date,
   service_type text, description text, mileage text, cost numeric, comment text,
+  receipt_number text,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );

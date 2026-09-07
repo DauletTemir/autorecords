@@ -15,11 +15,12 @@ export interface ExtractedDocument {
   mileage: string;
   cost: string;
   comment: string;
+  receipt_number: string;
 }
 
 const EMPTY_FIELDS: Array<keyof ExtractedDocument> = [
   "vin", "brand", "model", "year", "plate", "date",
-  "service_type", "description", "mileage", "cost", "comment",
+  "service_type", "description", "mileage", "cost", "comment", "receipt_number",
 ];
 
 export type SupportedLang = "en" | "ru" | "kk";
@@ -57,7 +58,8 @@ Respond ONLY with a raw JSON object, no markdown fences, no explanations:
   "description": "what was done or what was bought",
   "mileage": "number as string or empty",
   "cost": "total amount as number string or empty",
-  "comment": "anything else useful, incl. service center name"
+  "comment": "anything else useful, incl. service center name",
+  "receipt_number": "the invoice/work order/receipt's own printed number or ID, if visible (e.g. 'No. 4521', 'Order #7719') — not the VIN or plate — or empty if the document has none"
 }
 Write "service_type", "description" and "comment" in the SAME language the
 document itself is written in (detect it from the visible text — e.g. a
