@@ -30,6 +30,16 @@ const PROMPT_LANGUAGE_NAME: Record<SupportedLang, string> = {
   kk: "Kazakh",
 };
 
+// The extracted text fields are written in whatever language the source
+// document is actually in, never the app's current UI language — the UI
+// language is just what page the user happens to be on when they upload a
+// photo, and has nothing to do with what language the document was written
+// in. Records are stored once and read later, possibly with the UI set to
+// a different language by then, so keying off the document's own language
+// is the only choice that stays correct regardless of when it's viewed.
+// `lang` is used only as a fallback for the rare case Gemini can't
+// determine the document's language at all (e.g. it's mostly numbers/a
+// logo with no legible body text).
 function buildPrompt(lang: SupportedLang, knownVins: string[]): string {
   return `You are an OCR/extraction system for an automotive service company. Analyze this photo or screenshot of a vehicle service document (invoice, work order, receipt) and extract structured data.
 
@@ -49,7 +59,12 @@ Respond ONLY with a raw JSON object, no markdown fences, no explanations:
   "cost": "total amount as number string or empty",
   "comment": "anything else useful, incl. service center name"
 }
-Write "service_type", "description" and "comment" in ${PROMPT_LANGUAGE_NAME[lang]}. If a field is unreadable or absent, use an empty string.`;
+Write "service_type", "description" and "comment" in the SAME language the
+document itself is written in (detect it from the visible text — e.g. a
+Russian-language invoice gets Russian fields, a Kazakh-language invoice
+gets Kazakh fields), not in any other language. Only if the document's
+language truly cannot be determined, default to ${PROMPT_LANGUAGE_NAME[lang]}.
+If a field is unreadable or absent, use an empty string.`;
 }
 
 export function extractJson(text: string): ExtractedDocument {

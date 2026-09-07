@@ -94,3 +94,37 @@ describe("analyzeDocumentImage — transient overload retry", () => {
     expect(generateContentMock).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("analyzeDocumentImage — prompt language instructions", () => {
+  beforeEach(() => {
+    generateContentMock.mockReset();
+    generateContentMock.mockResolvedValue({
+      text: '{"vin":"","brand":"","model":"","year":"","plate":"","date":"","service_type":"","description":"","mileage":"","cost":"","comment":""}',
+    });
+  });
+
+  function getPromptText() {
+    const call = generateContentMock.mock.calls[0][0];
+    return call.contents.find((c) => "text" in c).text;
+  }
+
+  // Regression: the prompt used to hardcode the field language to whatever
+  // the app's current UI language was at upload time. Since records are
+  // stored once and can be viewed later under a different UI language,
+  // that produced English UI pages showing Russian/Kazakh text and vice
+  // versa. The extracted fields must match the document's own language
+  // instead, regardless of which `lang` (UI language) is passed in.
+  it.each(["en", "ru", "kk"] as const)("instructs the model to match the document's own language regardless of UI lang=%s", async (lang) => {
+    await analyzeDocumentImage("base64data", "image/jpeg", lang, []);
+    const prompt = getPromptText();
+
+    expect(prompt).toMatch(/same language the\s+document itself is written in/i);
+  });
+
+  it("still passes the UI language through as a fallback for when the document's language can't be determined", async () => {
+    await analyzeDocumentImage("base64data", "image/jpeg", "kk", []);
+    const prompt = getPromptText();
+
+    expect(prompt).toMatch(/default to Kazakh/i);
+  });
+});
