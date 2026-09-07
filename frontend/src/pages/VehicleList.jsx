@@ -58,7 +58,8 @@ export default function VehicleList() {
           : `${t("aiAdded")} ${vehicleLabel}${savedWhat ? `: ${savedWhat}` : ""}`,
       );
     } catch (e) {
-      notify(`${t("aiError")}\n${e.message}`, "warn");
+      const message = e.message === "quota_exceeded" ? t("aiQuotaExceeded") : t("aiError");
+      notify(message, "warn");
     } finally {
       setBusy(false);
       if (fileRef.current) fileRef.current.value = "";

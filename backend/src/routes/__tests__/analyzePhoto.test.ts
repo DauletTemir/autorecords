@@ -108,6 +108,43 @@ describe("POST /api/analyze-photo", () => {
     expect(res.body.vin).toBe("1HGCM82633A123456");
   });
 
+  it("maps a Gemini quota/rate-limit failure to a quota_exceeded code without leaking the raw provider error", async () => {
+    vi.mocked(supabaseAdmin.auth.getUser).mockResolvedValue({
+      data: { user: { id: "user-1" } },
+      error: null,
+    } as never);
+    vi.mocked(analyzeDocumentImage).mockRejectedValue(
+      new Error('{"error":{"code":429,"message":"You exceeded your current quota...","status":"RESOURCE_EXHAUSTED"}}'),
+    );
+
+    const res = await request(app)
+      .post("/api/analyze-photo")
+      .set("Authorization", "Bearer good-token")
+      .field("lang", "en")
+      .attach("photo", await makeRealJpeg(), "doc.jpg");
+
+    expect(res.status).toBe(502);
+    expect(res.body).toEqual({ error: "quota_exceeded" });
+    expect(JSON.stringify(res.body)).not.toMatch(/RESOURCE_EXHAUSTED|ai\.google\.dev/);
+  });
+
+  it("maps any other Gemini failure to a generic ai_analysis_failed code", async () => {
+    vi.mocked(supabaseAdmin.auth.getUser).mockResolvedValue({
+      data: { user: { id: "user-1" } },
+      error: null,
+    } as never);
+    vi.mocked(analyzeDocumentImage).mockRejectedValue(new Error("Empty response from model"));
+
+    const res = await request(app)
+      .post("/api/analyze-photo")
+      .set("Authorization", "Bearer good-token")
+      .field("lang", "en")
+      .attach("photo", await makeRealJpeg(), "doc.jpg");
+
+    expect(res.status).toBe(502);
+    expect(res.body).toEqual({ error: "ai_analysis_failed" });
+  });
+
   it.each(["en", "ru", "kk"] as const)("passes lang=%s through to analyzeDocumentImage unchanged", async (lang) => {
     vi.mocked(supabaseAdmin.auth.getUser).mockResolvedValue({
       data: { user: { id: "user-1" } },

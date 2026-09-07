@@ -43,7 +43,14 @@ analyzePhotoRouter.post(
       res.json(extracted);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error";
-      res.status(502).json({ error: "AI analysis failed", detail: message });
+      // Full error (may include upstream provider detail) stays server-side
+      // only — never forwarded to the client as-is.
+      console.error("analyze-photo failed:", message);
+
+      const isQuotaExceeded = /RESOURCE_EXHAUSTED|quota/i.test(message);
+      res.status(502).json({
+        error: isQuotaExceeded ? "quota_exceeded" : "ai_analysis_failed",
+      });
     }
   },
 );
