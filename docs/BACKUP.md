@@ -75,14 +75,18 @@ off.
      ```
      A `0` means the deployed build predates this variable's support —
      redeploy (see below).
-  2. **The running process predates your env var change** — Passenger
-     injects env vars only at process spawn time, not per-request or on
-     a config save. Clicking the cPanel UI's "Restart" touches a
-     `restart.txt` file that Passenger polls on a throttled schedule, and
-     that poll can be missed. A **Stop App, wait a few seconds, then
-     Start App** cycle forces an actual respawn more reliably than
-     Restart. To confirm which process is actually serving traffic and
-     what it sees:
+  2. **The running process predates your deploy or env var change** —
+     Passenger injects env vars (and loads `dist/`) only at process spawn
+     time, not per-request or on a config save. Clicking the cPanel UI's
+     "Restart" touches a `restart.txt` file that Passenger polls on a
+     throttled schedule, and that poll can be missed. On this host,
+     **Stop App → Start App has repeatedly failed to respawn the process
+     too** — confirmed on multiple separate occasions, the UI reports
+     success but `ps` shows the exact same PID with its original start
+     time afterwards. Don't treat Stop/Start as reliable here; verify the
+     PID actually changed, and if it didn't, go straight to the `kill`
+     fallback further below instead of retrying Stop/Start. To confirm
+     which process is actually serving traffic and what it sees:
      ```bash
      curl -s https://<your-backend-domain>/health -o /dev/null && \
        ps -u <cpanel-username> -f | grep -iE "node|lsnode|passenger" | grep -v grep
