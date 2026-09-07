@@ -127,6 +127,7 @@ export default function VehicleDetail() {
                   {["type", "desc", "mileage", "cost", "comment"].map((k) => (
                     <th key={k} className="font-display uppercase text-left px-3 py-2 font-semibold" style={{ letterSpacing: "0.06em", fontSize: 13 }}>{t(k)}</th>
                   ))}
+                  <th className="no-print font-display uppercase text-left px-3 py-2 font-semibold" style={{ letterSpacing: "0.06em", fontSize: 13 }}>{t("lastChanged")}</th>
                   <th className="no-print font-display uppercase text-left px-3 py-2 font-semibold" style={{ letterSpacing: "0.06em", fontSize: 13 }}>{t("actions")}</th>
                 </tr>
               </thead>
@@ -143,6 +144,14 @@ export default function VehicleDetail() {
                     <td className="px-3 py-2 font-mono whitespace-nowrap">{h.mileage}</td>
                     <td className="px-3 py-2 font-mono whitespace-nowrap">{h.cost}</td>
                     <td className="px-3 py-2 text-xs" style={{ color: C.bodyText, maxWidth: 220 }}>{h.comment}</td>
+                    <td className="no-print px-3 py-2 whitespace-nowrap text-xs" style={{ color: C.bodyText }}>
+                      {h.updated_at
+                        ? new Date(h.updated_at).toLocaleString(LOCALE_BY_LANG[lang] ?? "en-US", {
+                            dateStyle: "short",
+                            timeStyle: "short",
+                          })
+                        : t("unknown")}
+                    </td>
                     <td className="no-print px-3 py-2 whitespace-nowrap">
                       <div className="flex gap-1">
                         <button

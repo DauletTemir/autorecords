@@ -229,3 +229,46 @@ describe("VehicleDetail — history sort order", () => {
     expect(rows[2]).toContain("Brake pads");
   });
 });
+
+describe("VehicleDetail — last changed column", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    useCurrentGroup.mockReturnValue({ group: GROUP, loading: false });
+  });
+
+  it("shows a formatted timestamp for an entry with updated_at set", () => {
+    useVehicles.mockReturnValue({
+      vehicles: [{ ...VEHICLE, history: [{ ...ENTRY, updated_at: "2026-03-15T14:32:00Z" }] }],
+      loading: false,
+      addEntry: vi.fn(),
+      updateEntry: vi.fn(),
+      deleteEntry: vi.fn(),
+      deleteVehicle: vi.fn(),
+    });
+    renderPage();
+
+    const tables = document.querySelectorAll("table");
+    const historyTable = tables[tables.length - 1];
+    const row = historyTable.querySelector("tbody tr");
+
+    // Exact rendering is locale-dependent (toLocaleString) — assert the
+    // date portion appears somewhere in the row rather than an exact string.
+    expect(row.textContent).toMatch(/2026|15/);
+  });
+
+  it("falls back to the unknown placeholder when updated_at is missing", () => {
+    useVehicles.mockReturnValue({
+      vehicles: [{ ...VEHICLE, history: [{ ...ENTRY, updated_at: undefined }] }],
+      loading: false,
+      addEntry: vi.fn(),
+      updateEntry: vi.fn(),
+      deleteEntry: vi.fn(),
+      deleteVehicle: vi.fn(),
+    });
+    renderPage();
+
+    const tables = document.querySelectorAll("table");
+    const historyTable = tables[tables.length - 1];
+    expect(historyTable.querySelector("tbody tr").textContent).toContain("—");
+  });
+});

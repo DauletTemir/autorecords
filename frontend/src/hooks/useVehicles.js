@@ -16,7 +16,7 @@ export function useVehicles(orgId) {
 
     const { data: entryRows } = await supabase
       .from("service_entries")
-      .select("id, vehicle_id, date, service_type, description, mileage, cost, comment")
+      .select("id, vehicle_id, date, service_type, description, mileage, cost, comment, updated_at")
       .in("vehicle_id", (vehicleRows ?? []).map((v) => v.id));
 
     const withHistory = (vehicleRows ?? []).map((v) => ({

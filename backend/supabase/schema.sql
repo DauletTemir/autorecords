@@ -21,6 +21,7 @@ create table vehicles (
   vin text not null,
   brand text, model text, year text, plate text,
   created_at timestamptz default now(),
+  updated_at timestamptz default now(),
   unique (org_id, vin)
 );
 
@@ -29,7 +30,8 @@ create table service_entries (
   vehicle_id uuid not null references vehicles(id) on delete cascade,
   date date,
   service_type text, description text, mileage text, cost numeric, comment text,
-  created_at timestamptz default now()
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
 );
 
 -- Row Level Security -------------------------------------------------------
@@ -92,6 +94,29 @@ create policy "manage entries in own groups" on service_entries
   ) with check (
     vehicle_id in (select id from vehicles where org_id in (select my_org_ids()))
   );
+
+-- updated_at tracking: created_at never changes after insert, so without
+-- this there's no way to tell "last modified" from "first created". A
+-- trigger keeps it accurate without relying on application code.
+create or replace function set_updated_at()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+drop trigger if exists set_vehicles_updated_at on vehicles;
+create trigger set_vehicles_updated_at
+  before update on vehicles
+  for each row execute function set_updated_at();
+
+drop trigger if exists set_service_entries_updated_at on service_entries;
+create trigger set_service_entries_updated_at
+  before update on service_entries
+  for each row execute function set_updated_at();
 
 -- Auto-create a default group for every new user, atomically, at the
 -- database level. This replaces client-side "check then create" logic,
