@@ -139,3 +139,43 @@ describe("VehicleList — photo upload writes a service entry", () => {
     expect(await screen.findByText(/Brake replacement/)).toBeInTheDocument();
   });
 });
+
+describe("VehicleList — photo upload error handling", () => {
+  let addVehicle;
+  let addEntry;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    useCurrentGroup.mockReturnValue({ group: GROUP, loading: false });
+    addVehicle = vi.fn();
+    addEntry = vi.fn().mockResolvedValue(undefined);
+    useVehicles.mockReturnValue({ vehicles: [], loading: false, addVehicle, addEntry });
+  });
+
+  it("shows the quota-exceeded translation, not the raw error, when the backend reports quota_exceeded", async () => {
+    analyzePhoto.mockRejectedValue(new Error("quota_exceeded"));
+
+    renderPage();
+    await uploadPhoto();
+
+    expect(await screen.findByText(/достигнут дневной лимит/i)).toBeInTheDocument();
+
+    // Regression: the raw backend error code/message must never leak into
+    // the toast shown to the user.
+    expect(screen.queryByText(/quota_exceeded/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/RESOURCE_EXHAUSTED/)).not.toBeInTheDocument();
+
+    expect(addVehicle).not.toHaveBeenCalled();
+    expect(addEntry).not.toHaveBeenCalled();
+  });
+
+  it("falls back to the generic aiError translation for any other failure", async () => {
+    analyzePhoto.mockRejectedValue(new Error("ai_analysis_failed"));
+
+    renderPage();
+    await uploadPhoto();
+
+    expect(await screen.findByText(/Не удалось распознать изображение/i)).toBeInTheDocument();
+    expect(screen.queryByText(/достигнут дневной лимит/i)).not.toBeInTheDocument();
+  });
+});
