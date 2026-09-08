@@ -110,7 +110,7 @@ export async function analyzeDocumentImage(
   let lastError: unknown;
   for (let attempt = 0; attempt <= OVERLOAD_RETRY_DELAYS_MS.length; attempt++) {
     try {
-      const response = await ai.models.generateContent({ model: "gemini-3.5-flash", contents });
+      const response = await ai.models.generateContent({ model: env.GEMINI_MODEL, contents });
       const text = response.text;
       if (!text) throw new Error("Empty response from model");
       return extractJson(text);

@@ -6,7 +6,7 @@ vi.mock("@google/genai", () => ({
     return { models: { generateContent: generateContentMock } };
   },
 }));
-vi.mock("../../config/env.js", () => ({ env: { GEMINI_API_KEY: "fake-key" } }));
+vi.mock("../../config/env.js", () => ({ env: { GEMINI_API_KEY: "fake-key", GEMINI_MODEL: "gemini-3.5-flash-lite" } }));
 
 const { extractJson, analyzeDocumentImage } = await import("../gemini.js");
 
@@ -78,6 +78,20 @@ describe("analyzeDocumentImage — transient overload retry", () => {
 
     expect(result.brand).toBe("Kia");
     expect(generateContentMock).toHaveBeenCalledTimes(1);
+  });
+
+  // Regression: the model name used to be hardcoded as "gemini-3.5-flash"
+  // directly in the generateContent call. It must come from env.GEMINI_MODEL
+  // so it's configurable without a code change (e.g. switching to
+  // gemini-3.5-flash-lite for its much higher free-tier daily quota).
+  it("uses the model name from env.GEMINI_MODEL rather than a hardcoded string", async () => {
+    generateContentMock.mockResolvedValue(VALID_RESPONSE);
+
+    await analyzeDocumentImage("base64data", "image/jpeg", "en", []);
+
+    expect(generateContentMock).toHaveBeenCalledWith(
+      expect.objectContaining({ model: "gemini-3.5-flash-lite" }),
+    );
   });
 
   it("retries after a transient 503/UNAVAILABLE error and succeeds on the second attempt", async () => {
