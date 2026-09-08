@@ -26,6 +26,16 @@ describe("extractJson", () => {
     expect(result.receipt_number).toBe("");
   });
 
+  // Real documents print receipt numbers in all sorts of formats — verified
+  // against the actual Gemini API with a document reading "№ WO-2026/0451-A"
+  // — extractJson itself must pass any such string through unmodified,
+  // with no assumptions about digits-only or a fixed pattern.
+  it("preserves complex alphanumeric receipt numbers with slashes and hyphens as-is", () => {
+    const text = '{"vin":"ABC123","receipt_number":"WO-2026/0451-A"}';
+    const result = extractJson(text);
+    expect(result.receipt_number).toBe("WO-2026/0451-A");
+  });
+
   it("extracts JSON even when wrapped in markdown fences or prose", () => {
     const text = 'Here is the result:\n```json\n{"vin":"","brand":"Kia","model":"Sportage","year":"","plate":"","date":"","service_type":"","description":"","mileage":"","cost":"","comment":""}\n```';
     const result = extractJson(text);
