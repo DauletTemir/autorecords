@@ -53,7 +53,7 @@ Respond ONLY with a raw JSON object, no markdown fences, no explanations:
   "model": "string or empty",
   "year": "string or empty",
   "plate": "string or empty",
-  "date": "YYYY-MM-DD or empty",
+  "date": "YYYY-MM-DD or empty — see date parsing rules below",
   "service_type": "short label, e.g. oil change / repair / diagnostics / parts",
   "description": "what was done or what was bought",
   "mileage": "number as string or empty",
@@ -66,7 +66,19 @@ document itself is written in (detect it from the visible text — e.g. a
 Russian-language invoice gets Russian fields, a Kazakh-language invoice
 gets Kazakh fields), not in any other language. Only if the document's
 language truly cannot be determined, default to ${PROMPT_LANGUAGE_NAME[lang]}.
-If a field is unreadable or absent, use an empty string.`;
+If a field is unreadable or absent, use an empty string.
+
+Date parsing rules: a numeric date like "09/05/2026" is ambiguous —
+depending on the document's country of origin it could mean either
+September 5 (US-style MM/DD/YYYY) or May 9 (DD/MM/YYYY, used in most of
+the world including Kazakhstan and Russia). Never assume one convention
+by default. Instead, determine the document's country/locale from its
+own content — language, addresses, phone number format, currency,
+license plate format, "State"/"Texas"/"DPS" vs "область"/"облсовет"
+etc. — and apply that country's normal date convention when reading a
+purely numeric date. If a date is written unambiguously (e.g. "September
+5, 2026", "5 сентября 2026", or any format where the day exceeds 12), no
+guessing is needed — just convert it directly.`;
 }
 
 export function extractJson(text: string): ExtractedDocument {

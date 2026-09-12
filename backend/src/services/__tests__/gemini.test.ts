@@ -159,3 +159,47 @@ describe("analyzeDocumentImage — prompt language instructions", () => {
     expect(prompt).toMatch(/default to Kazakh/i);
   });
 });
+
+describe("analyzeDocumentImage — date parsing instructions", () => {
+  beforeEach(() => {
+    generateContentMock.mockReset();
+    generateContentMock.mockResolvedValue({
+      text: '{"vin":"","brand":"","model":"","year":"","plate":"","date":"","service_type":"","description":"","mileage":"","cost":"","comment":""}',
+    });
+  });
+
+  function getPromptText() {
+    const call = generateContentMock.mock.calls[0][0];
+    return call.contents.find((c) => "text" in c).text;
+  }
+
+  // Regression (real user report): a US document dated "09/05/2026"
+  // (September 5, MM/DD/YYYY) was uploaded with the app's UI language set
+  // to Russian and came back as 2026-05-09 (May 9) instead — the model
+  // had no instruction on how to resolve an ambiguous numeric date and
+  // appears to have defaulted toward the DD/MM reading. The prompt must
+  // tell it to infer the convention from the document's own content
+  // (country/locale), not from the app's UI language or any fixed
+  // default.
+  it("instructs the model to resolve ambiguous numeric dates from the document's own locale, not a fixed default", async () => {
+    await analyzeDocumentImage("base64data", "image/jpeg", "ru", []);
+    const prompt = getPromptText();
+
+    expect(prompt).toMatch(/ambiguous/i);
+    expect(prompt).toMatch(/MM\/DD\/YYYY/);
+    expect(prompt).toMatch(/DD\/MM\/YYYY/);
+    expect(prompt).toMatch(/never assume one convention\s+by default/i);
+  });
+
+  it("gives the same date-parsing instruction regardless of UI language", async () => {
+    await analyzeDocumentImage("base64data", "image/jpeg", "en", []);
+    const enPrompt = getPromptText();
+
+    generateContentMock.mockClear();
+    await analyzeDocumentImage("base64data", "image/jpeg", "kk", []);
+    const kkPrompt = getPromptText();
+
+    const dateRulesSection = (p: string) => p.slice(p.indexOf("Date parsing rules"));
+    expect(dateRulesSection(enPrompt)).toBe(dateRulesSection(kkPrompt));
+  });
+});
