@@ -18,10 +18,30 @@ vi.mock("../../lib/api", () => ({
   triggerBackup: vi.fn(),
 }));
 
+// Duplicate detection re-fetches history directly from Supabase (not from
+// the vehicles list already in React state, which can be stale by the
+// time an async AI call resolves) — mocked here to return whatever
+// mockServiceEntries() is configured with per test.
+let mockServiceEntriesResult = { data: [] };
+vi.mock("../../lib/supabaseClient", () => ({
+  supabase: {
+    auth: { signOut: vi.fn() },
+    from: vi.fn(() => ({
+      select: vi.fn(() => ({
+        eq: vi.fn(() => Promise.resolve(mockServiceEntriesResult)),
+      })),
+    })),
+  },
+}));
+
 const { useCurrentGroup } = await import("../../hooks/useCurrentGroup");
 const { useVehicles } = await import("../../hooks/useVehicles");
 const { analyzePhoto } = await import("../../lib/api");
 const { default: VehicleList } = await import("../VehicleList");
+
+function mockServiceEntries(entries) {
+  mockServiceEntriesResult = { data: entries };
+}
 
 const GROUP = { id: "group-1", name: "Гараж" };
 
@@ -166,6 +186,10 @@ describe("VehicleList — duplicate receipt detection", () => {
     addVehicle = vi.fn();
     addEntry = vi.fn().mockResolvedValue(undefined);
     useVehicles.mockReturnValue({ vehicles: [EXISTING_VEHICLE], loading: false, addVehicle, addEntry });
+    // Duplicate detection re-fetches history straight from Supabase rather
+    // than trusting the (possibly stale) vehicles list already in React
+    // state — this is the source it actually reads from.
+    mockServiceEntries([EXISTING_ENTRY]);
   });
 
   it("shows a confirmation modal instead of saving immediately when the receipt_number matches an existing entry", async () => {
@@ -238,6 +262,45 @@ describe("VehicleList — duplicate receipt detection", () => {
 
     await waitFor(() => expect(addEntry).toHaveBeenCalledTimes(1));
     expect(screen.queryByText(/Possible duplicate|Возможный дубликат|Ықтимал қайталану/i)).not.toBeInTheDocument();
+  });
+
+  // Regression: a user re-uploaded the same physical inspection receipt
+  // twice — first with an entry that had no receipt_number, then again
+  // with a photo clear enough for Gemini to read the number this time.
+  // Same date/mileage/cost both times, but no modal appeared and a second
+  // entry was silently created. Root-caused to two independent issues at
+  // once: (1) findDuplicateEntry compared mileage as an exact string, so
+  // a candidate's "170741" wouldn't match an existing entry's differently
+  // formatted mileage; (2) the check ran against vehicles from React
+  // state instead of freshly fetched history, so it could miss entries
+  // saved after the component's last render.
+  it("still catches a duplicate when only one side has a receipt_number, using fresh history from Supabase", async () => {
+    mockServiceEntries([{
+      id: "entry-old",
+      date: "2025-09-29",
+      service_type: "Emissions inspection",
+      description: "Emissions test for tax 2025",
+      mileage: "170741",
+      cost: "11.5",
+      comment: "For tax 2025",
+      receipt_number: null,
+    }]);
+    analyzePhoto.mockResolvedValue({
+      vin: "1HGCM82633A123456", brand: "Honda", model: "Accord",
+      date: "2025-09-29",
+      service_type: "Texas State Inspection",
+      description: "Texas State Inspection, Austin Emission Inspection Pass",
+      mileage: "170741",
+      cost: "11.50",
+      comment: "Brakes Plus Complete Auto Service",
+      receipt_number: "35913958189",
+    });
+
+    renderPage();
+    await uploadPhoto();
+
+    expect(await screen.findByText(/Possible duplicate|Возможный дубликат|Ықтимал қайталану/i)).toBeInTheDocument();
+    expect(addEntry).not.toHaveBeenCalled();
   });
 });
 

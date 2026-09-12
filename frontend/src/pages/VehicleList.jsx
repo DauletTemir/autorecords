@@ -28,6 +28,19 @@ export default function VehicleList() {
     setTimeout(() => setToast(null), kind === "warn" ? 12000 : 6000);
   };
 
+  // Duplicate detection must run against the server's current state, not
+  // the vehicles list already sitting in React state — that list can be
+  // stale by the time an async AI analysis call resolves (e.g. another
+  // upload/edit landed in between), which would let a real duplicate slip
+  // through with no warning.
+  const fetchFreshHistory = async (vehicleId) => {
+    const { data } = await supabase
+      .from("service_entries")
+      .select("id, date, service_type, description, mileage, cost, comment, receipt_number")
+      .eq("vehicle_id", vehicleId);
+    return data ?? [];
+  };
+
   const saveEntry = async (vehicle, extracted, isNew) => {
     await addEntry(vehicle.id, {
       date: extracted.date || null,
@@ -63,7 +76,8 @@ export default function VehicleList() {
       const isNew = !existing;
       const vehicle = existing ?? await addVehicle({ vin, brand: extracted.brand, model: extracted.model, year: extracted.year, plate: extracted.plate });
 
-      const duplicate = existing ? findDuplicateEntry(extracted, existing.history) : null;
+      const currentHistory = existing ? await fetchFreshHistory(vehicle.id) : [];
+      const duplicate = findDuplicateEntry(extracted, currentHistory);
       if (duplicate) {
         setPendingDuplicate({ vehicle, extracted, isNew, duplicate });
         return;

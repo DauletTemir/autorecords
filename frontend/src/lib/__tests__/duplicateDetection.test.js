@@ -73,4 +73,34 @@ describe("findDuplicateEntry", () => {
 
     expect(findDuplicateEntry(candidate, existing)).toBe(existing[0]);
   });
+
+  // Regression: mileage used to be compared as an exact string, so a
+  // thousands separator or unit suffix from AI extraction (either is
+  // possible depending on how the source document phrases it) would make
+  // an otherwise-identical mileage fail to match and let a real duplicate
+  // through silently.
+  it("treats mileage as numeric, ignoring thousands separators and unit suffixes", () => {
+    const existing = [{ ...BASE_EXISTING }]; // mileage: "180000"
+    expect(findDuplicateEntry({ receipt_number: "", date: "2026-06-06", mileage: "180,000", cost: "45.00" }, existing)).toBe(existing[0]);
+    expect(findDuplicateEntry({ receipt_number: "", date: "2026-06-06", mileage: "180000 km", cost: "45.00" }, existing)).toBe(existing[0]);
+    expect(findDuplicateEntry({ receipt_number: "", date: "2026-06-06", mileage: "180000 км", cost: "45.00" }, existing)).toBe(existing[0]);
+  });
+
+  it("still distinguishes genuinely different mileages after stripping separators/units", () => {
+    const existing = [{ ...BASE_EXISTING }]; // mileage: "180000"
+    const candidate = { receipt_number: "", date: "2026-06-06", mileage: "185,000 km", cost: "45.00" };
+
+    expect(findDuplicateEntry(candidate, existing)).toBeNull();
+  });
+
+  // Regression (real user report): the exact production scenario — a
+  // second photo of the same physical receipt where Gemini read the
+  // receipt number this time but couldn't on the first upload. One side
+  // has a number, the other doesn't; date/mileage/cost all match.
+  it("catches the duplicate when only the candidate has a receipt_number and the existing entry has none", () => {
+    const existing = [{ ...BASE_EXISTING, receipt_number: null, date: "2025-09-29", mileage: "170741", cost: "11.5" }];
+    const candidate = { receipt_number: "35913958189", date: "2025-09-29", mileage: "170741", cost: "11.50" };
+
+    expect(findDuplicateEntry(candidate, existing)).toBe(existing[0]);
+  });
 });

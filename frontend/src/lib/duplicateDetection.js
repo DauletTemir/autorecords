@@ -1,5 +1,16 @@
 import { parseCost } from "./historyFilters";
 
+// Mileage from AI extraction can come back with thousands separators or a
+// trailing unit ("170,741", "170741 km", "170741 км") depending on how the
+// source document phrases it, even though the underlying number is the
+// same. A plain string comparison would treat those as different values
+// and miss an otherwise-exact duplicate — parse to a number the same way
+// parseCost already does for cost, instead of comparing raw strings.
+function parseMileage(raw) {
+  const n = parseInt(String(raw).replace(/[^\d]/g, ""), 10);
+  return isNaN(n) ? null : n;
+}
+
 // Detects whether a newly AI-extracted entry looks like it's the same
 // real-world receipt as one already saved for this vehicle — e.g. the user
 // re-uploaded the same document (a clearer retake, or they forgot they'd
@@ -29,16 +40,16 @@ export function findDuplicateEntry(candidate, existingEntries) {
   }
 
   const candidateDate = normalize(candidate.date);
-  const candidateMileage = normalize(candidate.mileage);
+  const candidateMileage = parseMileage(candidate.mileage);
   const candidateCost = parseCost(candidate.cost);
 
-  if (!candidateDate || !candidateMileage || candidateCost === null) return null;
+  if (!candidateDate || candidateMileage === null || candidateCost === null) return null;
 
   return (
     existingEntries.find((e) => {
       if (normalize(e.receipt_number)) return false; // has a number but candidate doesn't — not comparable, skip
       if (normalize(e.date) !== candidateDate) return false;
-      if (normalize(e.mileage) !== candidateMileage) return false;
+      if (parseMileage(e.mileage) !== candidateMileage) return false;
       return parseCost(e.cost) === candidateCost;
     }) ?? null
   );
