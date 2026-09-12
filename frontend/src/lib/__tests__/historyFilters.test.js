@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { filterHistory, parseCost, sortHistory, sumCost } from "../historyFilters";
+import { filterHistory, parseCost, recentActivity, sortHistory, sumCost } from "../historyFilters";
 
 const history = [
   { date: "2025-01-01", service_type: "Oil change", cost: "45.00" },
@@ -96,5 +96,66 @@ describe("sortHistory", () => {
 
   it("returns an empty array unchanged", () => {
     expect(sortHistory([], "desc")).toEqual([]);
+  });
+});
+
+describe("recentActivity", () => {
+  const carA = { vin: "VIN-A", brand: "Kia", model: "Sportage" };
+  const carB = { vin: "VIN-B", brand: "Ford", model: "F-150" };
+
+  const vehicles = [
+    {
+      ...carA,
+      history: [
+        { id: "a1", service_type: "Oil change", updated_at: "2026-09-01T10:00:00Z" },
+        { id: "a2", service_type: "Spark plugs", updated_at: "2026-09-05T10:00:00Z" },
+      ],
+    },
+    {
+      ...carB,
+      history: [
+        { id: "b1", service_type: "Tire rotation", updated_at: "2026-09-10T10:00:00Z" },
+      ],
+    },
+  ];
+
+  it("returns entries from every vehicle, newest updated_at first", () => {
+    const result = recentActivity(vehicles);
+    expect(result.map((h) => h.id)).toEqual(["b1", "a2", "a1"]);
+  });
+
+  it("attaches the owning vehicle to each entry", () => {
+    const result = recentActivity(vehicles);
+    expect(result[0].vehicle.vin).toBe("VIN-B");
+    expect(result[1].vehicle.vin).toBe("VIN-A");
+  });
+
+  it("respects a custom limit", () => {
+    expect(recentActivity(vehicles, 1)).toHaveLength(1);
+    expect(recentActivity(vehicles, 10)).toHaveLength(3);
+  });
+
+  it("excludes entries with no updated_at instead of sorting them unpredictably", () => {
+    const withMissing = [
+      { ...carA, history: [{ id: "no-timestamp", service_type: "Oil change" }] },
+      { ...carB, history: [{ id: "b1", service_type: "Tire rotation", updated_at: "2026-09-10T10:00:00Z" }] },
+    ];
+    const result = recentActivity(withMissing);
+    expect(result.map((h) => h.id)).toEqual(["b1"]);
+  });
+
+  it("returns an empty array when no vehicle has any history", () => {
+    expect(recentActivity([{ ...carA, history: [] }])).toEqual([]);
+  });
+
+  it("defaults to a limit of 3", () => {
+    const manyEntries = {
+      ...carA,
+      history: Array.from({ length: 5 }, (_, i) => ({
+        id: `e${i}`,
+        updated_at: `2026-09-0${i + 1}T10:00:00Z`,
+      })),
+    };
+    expect(recentActivity([manyEntries])).toHaveLength(3);
   });
 });

@@ -33,3 +33,18 @@ export function sortHistory(entries, direction = "desc") {
 
   return [...sorted, ...withoutDate];
 }
+
+// Most-recently-saved-or-edited entries across every vehicle in the
+// garage, for a "recent activity" overview. Ranked by updated_at (when
+// the record was actually touched in the app), not by the service date
+// on the document — a photo uploaded today for a repair from months ago
+// is recent activity, even though its service date is old. Entries
+// without updated_at (shouldn't normally happen post-migration, but kept
+// defensive) sort last and are excluded once the limit is reached.
+export function recentActivity(vehicles, limit = 3) {
+  return vehicles
+    .flatMap((v) => v.history.map((h) => ({ ...h, vehicle: v })))
+    .filter((h) => h.updated_at)
+    .sort((a, b) => b.updated_at.localeCompare(a.updated_at))
+    .slice(0, limit);
+}

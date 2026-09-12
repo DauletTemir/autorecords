@@ -357,3 +357,79 @@ describe("VehicleList — photo upload error handling", () => {
     expect(screen.queryByText(/достигнут дневной лимит/i)).not.toBeInTheDocument();
   });
 });
+
+describe("VehicleList — recent activity section", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    useCurrentGroup.mockReturnValue({ group: GROUP, loading: false });
+  });
+
+  it("shows the 3 most recently updated entries across all vehicles, newest first", () => {
+    useVehicles.mockReturnValue({
+      vehicles: [
+        {
+          id: "vehicle-1", vin: "VIN-KIA", brand: "Kia", model: "Sportage", year: "2019", plate: "",
+          history: [
+            { id: "e1", service_type: "Oil change", updated_at: "2026-09-01T10:00:00Z" },
+            { id: "e2", service_type: "Spark plugs", updated_at: "2026-09-05T10:00:00Z" },
+          ],
+        },
+        {
+          id: "vehicle-2", vin: "VIN-FORD", brand: "Ford", model: "F-150", year: "2020", plate: "",
+          history: [
+            { id: "e3", service_type: "Tire rotation", updated_at: "2026-09-10T10:00:00Z" },
+            { id: "e4", service_type: "Brake pads", updated_at: "2026-08-01T10:00:00Z" },
+          ],
+        },
+      ],
+      loading: false,
+      addVehicle: vi.fn(),
+      addEntry: vi.fn(),
+    });
+
+    renderPage();
+
+    const section = screen.getByText(/Recent activity|Недавняя активность|Соңғы белсенділік/i).closest("div").parentElement;
+    const rows = section.querySelectorAll("a");
+
+    // Newest first: Tire rotation (Sep 10) > Spark plugs (Sep 5) > Oil change (Sep 1).
+    // Brake pads (Aug 1) is the 4th-most-recent, so it must not appear.
+    expect(rows).toHaveLength(3);
+    expect(rows[0].textContent).toContain("Tire rotation");
+    expect(rows[1].textContent).toContain("Spark plugs");
+    expect(rows[2].textContent).toContain("Oil change");
+    expect(section.textContent).not.toContain("Brake pads");
+  });
+
+  it("links each row to its own vehicle's detail page", () => {
+    useVehicles.mockReturnValue({
+      vehicles: [
+        {
+          id: "vehicle-1", vin: "VIN-KIA", brand: "Kia", model: "Sportage", year: "2019", plate: "",
+          history: [{ id: "e1", service_type: "Oil change", updated_at: "2026-09-01T10:00:00Z" }],
+        },
+      ],
+      loading: false,
+      addVehicle: vi.fn(),
+      addEntry: vi.fn(),
+    });
+
+    renderPage();
+
+    const link = screen.getByText("Oil change").closest("a");
+    expect(link).toHaveAttribute("href", "/app/vehicles/VIN-KIA");
+  });
+
+  it("does not render the section when no vehicle has any history yet", () => {
+    useVehicles.mockReturnValue({
+      vehicles: [{ id: "vehicle-1", vin: "VIN-KIA", brand: "Kia", model: "Sportage", year: "2019", plate: "", history: [] }],
+      loading: false,
+      addVehicle: vi.fn(),
+      addEntry: vi.fn(),
+    });
+
+    renderPage();
+
+    expect(screen.queryByText(/Recent activity|Недавняя активность|Соңғы белсенділік/i)).not.toBeInTheDocument();
+  });
+});

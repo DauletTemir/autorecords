@@ -7,9 +7,12 @@ import { useVehicles } from "../hooks/useVehicles";
 import { analyzePhoto } from "../lib/api";
 import { supabase } from "../lib/supabaseClient";
 import { findDuplicateEntry } from "../lib/duplicateDetection";
+import { recentActivity } from "../lib/historyFilters";
 import { Btn, Input, Label, Modal, VinPlate } from "../components/ui";
 import AddVehicleModal from "../components/AddVehicleModal";
 import LanguageSwitcher from "../components/LanguageSwitcher";
+
+const LOCALE_BY_LANG = { en: "en-US", ru: "ru-RU", kk: "kk-KZ" };
 
 export default function VehicleList() {
   const { t, lang } = useLang();
@@ -202,6 +205,35 @@ export default function VehicleList() {
                 </Link>
               );
             })}
+          </div>
+        )}
+
+        {vehicles.length > 0 && recentActivity(vehicles).length > 0 && (
+          <div className="mt-6">
+            <div className="mb-3"><Label>{t("recentActivity")}</Label></div>
+            <div className="grid gap-2">
+              {recentActivity(vehicles).map((h) => (
+                <Link
+                  key={h.id}
+                  to={`/app/vehicles/${h.vehicle.vin}`}
+                  className="flex flex-wrap items-center justify-between gap-2 p-3 text-sm"
+                  style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 10 }}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="font-display uppercase font-semibold" style={{ color: C.headingText }}>
+                      {h.vehicle.brand || t("unknown")} {h.vehicle.model}
+                    </span>
+                    <span style={{ color: C.bodyText }}>{h.service_type || t("unknown")}</span>
+                  </div>
+                  <span className="font-mono text-xs" style={{ color: C.bodyText }}>
+                    {new Date(h.updated_at).toLocaleString(LOCALE_BY_LANG[lang] ?? "en-US", {
+                      dateStyle: "short",
+                      timeStyle: "short",
+                    })}
+                  </span>
+                </Link>
+              ))}
+            </div>
           </div>
         )}
       </main>
