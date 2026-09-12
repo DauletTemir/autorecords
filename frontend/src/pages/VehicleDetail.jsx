@@ -113,6 +113,7 @@ export default function VehicleDetail() {
             <table className="w-full text-sm" style={{ borderCollapse: "collapse", minWidth: 640 }}>
               <thead>
                 <tr style={{ background: C.headingText, color: "#fff" }}>
+                  <th className="no-print font-display uppercase text-left px-3 py-2 font-semibold" style={{ letterSpacing: "0.06em", fontSize: 13 }}>№</th>
                   <th className="font-display uppercase text-left px-3 py-2 font-semibold" style={{ letterSpacing: "0.06em", fontSize: 13 }}>
                     <button
                       type="button"
@@ -132,8 +133,9 @@ export default function VehicleDetail() {
                 </tr>
               </thead>
               <tbody>
-                {sorted.map((h) => (
+                {sorted.map((h, i) => (
                   <tr key={h.id} style={{ borderTop: `1px solid ${C.line}` }}>
+                    <td className="no-print px-3 py-2 font-mono whitespace-nowrap" style={{ color: C.bodyText }}>{i + 1}</td>
                     <td className="px-3 py-2 font-mono whitespace-nowrap">{h.date || t("unknown")}</td>
                     <td className="px-3 py-2">
                       <span style={{ background: C.accent + "22", border: `1px solid ${C.accent}`, borderRadius: 6, padding: "1px 7px", fontSize: 13 }}>

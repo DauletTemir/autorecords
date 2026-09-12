@@ -177,6 +177,34 @@ describe("VehicleDetail — history sort order", () => {
     expect(rows[2]).toContain("Oil change");
   });
 
+  it("numbers rows 1, 2, 3 by their current display position, not by entry id or date", () => {
+    renderPage();
+    const tables = document.querySelectorAll("table");
+    const historyTable = tables[tables.length - 1];
+    const rows = Array.from(historyTable.querySelectorAll("tbody tr"));
+    const rowNumbers = rows.map((row) => row.querySelector("td").textContent.trim());
+
+    expect(rowNumbers).toEqual(["1", "2", "3"]);
+  });
+
+  it("renumbers rows after the sort direction is toggled", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(screen.getByRole("button", { name: /Sorted newest first|Сначала новые|Ең жаңасынан/i }));
+
+    const tables = document.querySelectorAll("table");
+    const historyTable = tables[tables.length - 1];
+    const rows = Array.from(historyTable.querySelectorAll("tbody tr"));
+
+    // Oldest-first now — row 1 must be "Oil change" (the oldest entry),
+    // not still tagged with whatever number it had under the old order.
+    expect(rows[0].textContent).toContain("Oil change");
+    expect(rows[0].querySelector("td").textContent.trim()).toBe("1");
+    expect(rows[2].textContent).toContain("Brake pads");
+    expect(rows[2].querySelector("td").textContent.trim()).toBe("3");
+  });
+
   it("moves an edited entry to its new chronological position", async () => {
     const user = userEvent.setup();
     renderPage();
